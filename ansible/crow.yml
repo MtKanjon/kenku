@@ -3,7 +3,10 @@
   become: yes
 
   tasks:
-    # custom cogs
+    # static files
+    - file:
+        path: /opt/crow
+        state: directory
     - synchronize:
         src: ../cogs
         dest: /opt/crow/
@@ -31,9 +34,6 @@
           - rsync
 
     # bot installation
-    - file:
-        path: /opt/crow
-        state: directory
     - pip:
         name:
           - pip
@@ -49,6 +49,8 @@
         path: /usr/local/share/Red-DiscordBot
         state: directory
         owner: crow
+    
+    # runtime service
     - copy:
         src: red.service
         dest: /etc/systemd/system/red@.service
