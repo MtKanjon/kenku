@@ -7,7 +7,7 @@
 In `ansible/hosts`:
 
 ```ini
-[fasbot]
+[crow]
 host.name.here ansible_user=gcp_username_com
 ```
 
