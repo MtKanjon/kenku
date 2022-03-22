@@ -3,6 +3,12 @@
   become: yes
 
   tasks:
+    # custom cogs
+    - synchronize:
+        src: ../cogs
+        dest: /opt/crow/
+    
+    # system account
     - user:
         name: crow
         group: users
@@ -11,6 +17,7 @@
         password: "!"
       register: crow_user
 
+    # packages
     - apt:
         name:
           - python3
@@ -21,7 +28,9 @@
           - openjdk-11-jre-headless
           - build-essential
           - nano
+          - rsync
 
+    # bot installation
     - file:
         path: /opt/crow
         state: directory
@@ -31,14 +40,15 @@
           - setuptools
           - wheel
           - Red-DiscordBot
+          - Pillow
         virtualenv: /opt/crow
         virtualenv_command: /usr/bin/python3 -m venv
     
+    # bot config
     - file:
         path: /usr/local/share/Red-DiscordBot
         state: directory
         owner: crow
-    
     - copy:
         src: red.service
         dest: /etc/systemd/system/red@.service
