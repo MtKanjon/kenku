@@ -13,7 +13,7 @@ class Crow(commands.Cog):
     WIDE_WIDTH_MUL = 3
 
     @commands.command()
-    async def wide(self, ctx, emoji: discord.Emoji):
+    async def wide(self, ctx, emoji: discord.PartialEmoji):
         emoji_data = BytesIO(await emoji.url.read())
 
         resized_file = BytesIO()
@@ -24,5 +24,4 @@ class Crow(commands.Cog):
         resized_file.seek(0)
         file = discord.File(resized_file, filename=f"{emoji.name}_wide.png")
         sent = await ctx.send(file=file)
-        await sent.add_reaction(emoji)
 
