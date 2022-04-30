@@ -16,7 +16,11 @@ python3 -m venv red
 ./red/bin/redbot <name>
 ```
 
-First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/).
+First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/)
+
+### Formatting
+
+Use [black](https://pypi.org/project/black/).
 
 ## Deployment
 
