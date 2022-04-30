@@ -1,5 +1,23 @@
 🦊
 
+## Development
+
+### Setup
+
+```bash
+python3 -m venv red
+./red/bin/pip3 install -r requirements.txt
+./red/bin/redbot-setup
+```
+
+### Running
+
+```bash
+./red/bin/redbot <name>
+```
+
+First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/).
+
 ## Deployment
 
 ### Inventory
