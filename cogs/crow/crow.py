@@ -19,7 +19,9 @@ class Crow(commands.Cog):
         self.event_manager = EventManager(self)
 
     @commands.command()
-    async def wide(self, ctx: commands.Context, emoji: discord.PartialEmoji, size: int = 3):
+    async def wide(
+        self, ctx: commands.Context, emoji: discord.PartialEmoji, size: int = 3
+    ):
         if size < 2 or size > 10:
             await ctx.react_quietly("🚷")
             return
@@ -73,7 +75,7 @@ class Crow(commands.Cog):
         return await self.bot.is_mod(member)
 
     def has_mod_reacts(self, message):
-        pass # TODO
+        pass  # TODO
 
     @commands.command()
     async def eventdebug(self, ctx: commands.Context):
@@ -86,7 +88,9 @@ class Crow(commands.Cog):
 
         desc = []
         for channel, points in point_map.items():
-            desc.append(f"<#{channel}>: {points}")
+            plural = "point" if points == 1 else "points"
+            desc.append(f"<#{channel}>: {points} {plural}")
+            
         embed = discord.Embed(
             title="Your points",
             description="\n".join(desc),
@@ -94,6 +98,29 @@ class Crow(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def confchannel(self, ctx: commands.Context, channel: discord.TextChannel, multiplier: int = None):
+    async def leaderboard(self, ctx: commands.Context):
+        user_points = self.event_manager.compute_leaderboard()
+
+        desc = []
+        place = 1
+        for user, points in user_points.items():
+            plural = "point" if points == 1 else "points"
+            desc.append(f"**{place}.** <@{user}>: {points} {plural}")
+            place += 1
+
+        embed = discord.Embed(
+            title="Leaderboard",
+            description="\n".join(desc),
+        )
+        mentions = discord.AllowedMentions(users=False)
+        await ctx.send(embed=embed, allowed_mentions=mentions)
+
+    @commands.command()
+    async def confchannel(
+        self,
+        ctx: commands.Context,
+        channel: discord.TextChannel,
+        multiplier: int = None,
+    ):
         self.event_manager.configure_channel(channel, multiplier)
         await ctx.tick()

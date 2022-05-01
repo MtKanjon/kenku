@@ -9,6 +9,8 @@ class EventStorage:
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
 
+        # TODO: bake in guild_id into storage
+
         # XXX
         print(self.path)
 
@@ -109,6 +111,16 @@ class EventStorage:
             WHERE user_id = ?
             """,
             (user_id,),
+        ).fetchall()
+
+    def get_all_points(self):
+        return self.db.execute(
+            """
+            SELECT message_id, user_id, multiplier
+            FROM event_points p
+            JOIN event_channels c
+                ON p.channel_id = c.channel_id
+            """,
         ).fetchall()
 
     def export(self):

@@ -6,6 +6,7 @@ from .event_storage import EventStorage
 
 
 class EventManager:
+    
     def __init__(self, cog: commands.Cog):
         self.cog = cog
 
@@ -42,6 +43,18 @@ class EventManager:
             current_points = point_map.get(channel_id, 0)
             point_map[channel_id] = current_points + point["multiplier"]
         return point_map
+
+    def compute_leaderboard(self):
+        points = self.storage.get_all_points()
+        user_points = {}
+        for point in points:
+            user_id = point["user_id"]
+            current_points = user_points.get(user_id, 0)
+            user_points[user_id] = current_points + point["multiplier"]
+        # TODO: cache this into a leaderboard table that is kept up to date
+        tuples = sorted(user_points.items(), key=lambda item: item[1], reverse=True)
+        sorted_users = {k: v for k, v in tuples}
+        return sorted_users
 
     def debug(self):
         data = self.storage.export()
