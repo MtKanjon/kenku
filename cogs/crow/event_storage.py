@@ -31,10 +31,25 @@ class EventStorage:
         return row[0]
 
     def configure_channel(self, *, channel_id: int, multiplier: int = None):
-        pass  # TODO
+        self.db.execute(
+            """
+            INSERT INTO event_channels (channel_id, multiplier)
+            VALUES (:channel_id, :multiplier)
+            ON CONFLICT (channel_id) DO UPDATE SET multiplier=:multiplier
+            """,
+            dict(channel_id=channel_id, multiplier=multiplier),
+        )
+        self.db.commit()
 
     def remove_channel(self, *, channel_id: int):
-        pass  # TODO
+        self.db.execute(
+            """
+            DELETE FROM event_channels
+            WHERE channel_id = ?
+            """,
+            (channel_id,),
+        )
+        self.db.commit()
 
     def update_snowflake(self, *, id, name):
         self.db.execute(
@@ -76,18 +91,18 @@ class EventStorage:
         self.db.commit()
 
     def get_channel(self, channel_id):
-        rows = self.db.execute(
+        return self.db.execute(
             """
             SELECT * from event_channels
             WHERE channel_id = ?
             """,
             (channel_id,),
-        ).fetchall()
+        ).fetchone()
 
     def get_points_for_user(self, user_id):
-        rows = self.db.execute(
+        return self.db.execute(
             """
-            SELECT message_id, channel_id, multiplier, sent_at
+            SELECT message_id, p.channel_id, multiplier, sent_at
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
@@ -99,7 +114,7 @@ class EventStorage:
     def export(self):
         return self.db.execute(
             """
-            SELECT message_id, p.channel_id, multiplier, sent_at, sc.name channel, sc.name user
+            SELECT message_id, p.channel_id, multiplier, sent_at, sc.name channel, su.name user
             FROM event_points p
             LEFT OUTER JOIN event_channels c
                 ON p.channel_id = c.channel_id

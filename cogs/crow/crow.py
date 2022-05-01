@@ -19,7 +19,7 @@ class Crow(commands.Cog):
         self.event_manager = EventManager(self)
 
     @commands.command()
-    async def wide(self, ctx, emoji: discord.PartialEmoji, size: int = 3):
+    async def wide(self, ctx: commands.Context, emoji: discord.PartialEmoji, size: int = 3):
         if size < 2 or size > 10:
             await ctx.react_quietly("🚷")
             return
@@ -54,8 +54,6 @@ class Crow(commands.Cog):
 
         await message.add_reaction(EVENT_EMOJI)
 
-        pass
-
     @commands.Cog.listener("on_raw_reaction_remove")
     async def remove_event_points(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
@@ -75,9 +73,27 @@ class Crow(commands.Cog):
         return await self.bot.is_mod(member)
 
     def has_mod_reacts(self, message):
-        pass
+        pass # TODO
 
     @commands.command()
-    async def eventdebug(self, ctx):
+    async def eventdebug(self, ctx: commands.Context):
         msg = chat_formatting.box(pformat(self.event_manager.debug()), "python")
         await ctx.send(msg)
+
+    @commands.command()
+    async def mypoints(self, ctx: commands.Context):
+        point_map = self.event_manager.user_info(ctx.message.author)
+
+        desc = []
+        for channel, points in point_map.items():
+            desc.append(f"<#{channel}>: {points}")
+        embed = discord.Embed(
+            title="Your points",
+            description="\n".join(desc),
+        )
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def confchannel(self, ctx: commands.Context, channel: discord.TextChannel, multiplier: int = None):
+        self.event_manager.configure_channel(channel, multiplier)
+        await ctx.tick()
