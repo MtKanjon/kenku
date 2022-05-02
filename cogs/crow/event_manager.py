@@ -50,7 +50,9 @@ class EventManager:
                         content=f"{emoji} Scanned {count} messages so far..."
                     )
 
-            await status_message.edit(content=f"🏁 Scan complete. Checked {count} messages.")
+            await status_message.edit(
+                content=f"🏁 Scan complete. Checked {count} messages."
+            )
             self.active_task = None
 
     def _default_season(self, guild_id):
@@ -79,7 +81,7 @@ class EventManager:
 
     def clear_channel_points(self, channel: discord.TextChannel):
         self.storage.clear_channel_points(channel_id=channel.id)
-    
+
     def get_season_channels(self, ctx: commands.Context):
         season = self._default_season(ctx.guild.id)
         return season, self.storage.get_season_channels(season["id"])
@@ -105,13 +107,16 @@ class EventManager:
     def remove_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]
         self.storage.remove_point(
-            message_id=message.id, season_id=season_id, user_id=message.author.id
+            message_id=message.id,
+            season_id=season_id,
+            channel_id=message.channel.id,
+            user_id=message.author.id,
         )
 
     def user_info(self, user: discord.Member):
         season = self._default_season(user.guild.id)
 
-        points = self.storage.get_points_for_user(
+        points = self.storage.get_season_points_for_user(
             season_id=season["id"], user_id=user.id
         )
         point_map = {}
@@ -121,12 +126,19 @@ class EventManager:
             point_map[channel_id] = current_points + point["point_value"]
         return season, point_map
 
-    def compute_leaderboard(self, guild_id):
+    def get_season_leaderboard(self, guild_id):
         season = self._default_season(guild_id)
 
         sorted_scores = self.storage.get_season_scores(season_id=season["id"])
         score_map = {s["user_id"]: s["score"] for s in sorted_scores}
         return season, score_map
+
+    def get_event_leaderboard(self, channel_id):
+        if not self.storage.get_channel(channel_id):
+            return None
+        sorted_scores = self.storage.get_event_scores(channel_id=channel_id)
+        score_map = {s["user_id"]: s["score"] for s in sorted_scores}
+        return score_map
 
     def debug(self):
         data = self.storage.export()

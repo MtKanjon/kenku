@@ -167,10 +167,23 @@ class Crow(commands.Cog):
         await ctx.send(embed=embed)
 
     @events.command(name="leaderboard")
-    async def events_leaderboard(self, ctx: commands.Context):
-        """Show the season leaderboard."""
+    async def events_leaderboard(self, ctx: commands.Context, event: discord.TextChannel = None):
+        """
+        Show the season leaderboard.
+        
+        If a channel is provided, show that event's leaderboard instead.
+        """
 
-        season, user_points = self.event_manager.compute_leaderboard(ctx.guild.id)
+        if event:
+            user_points = self.event_manager.get_event_leaderboard(event.id)
+            if user_points is None:
+                # channel not registered for events
+                await ctx.react_quietly('🚷')
+                return
+            title = event.name
+        else:
+            season, user_points = self.event_manager.get_season_leaderboard(ctx.guild.id)
+            title = season['name']
 
         desc = []
         place = 1
@@ -180,7 +193,7 @@ class Crow(commands.Cog):
             place += 1
 
         embed = discord.Embed(
-            title=f"Leaderboard - {season['name']}",
+            title=f"Leaderboard - {title}",
             description="\n".join(desc),
         )
         mentions = discord.AllowedMentions(users=False)

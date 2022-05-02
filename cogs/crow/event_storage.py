@@ -59,7 +59,7 @@ class EventStorage:
             """,
             (channel_id,),
         ).fetchone()
-    
+
     def get_season_channels(self, season_id: int):
         return self.db.execute(
             """
@@ -81,7 +81,7 @@ class EventStorage:
             dict(channel_id=channel_id, season_id=season_id, point_value=point_value),
         )
         self.db.commit()
-        self._compute_scores(season_id)
+        self._compute_scores(season_id=season_id, channel_id=channel_id)
 
     def remove_channel(self, *, channel_id: int, season_id: int):
         self.db.execute(
@@ -92,7 +92,7 @@ class EventStorage:
             (channel_id,),
         )
         self.db.commit()
-        self._compute_scores(season_id)
+        self._compute_scores(season_id=season_id, channel_id=channel_id)
 
     def clear_channel_points(self, *, channel_id: int):
         self.db.execute(
@@ -133,9 +133,11 @@ class EventStorage:
             (message_id, user_id, season_id, channel_id, sent_at),
         )
         self.db.commit()
-        self._update_score(season_id=season_id, user_id=user_id)
+        self._update_score(season_id=season_id, channel_id=channel_id, user_id=user_id)
 
-    def remove_point(self, *, message_id: int, user_id: int, season_id: int):
+    def remove_point(
+        self, *, message_id: int, user_id: int, season_id: int, channel_id: int
+    ):
         self.db.execute(
             """
             DELETE FROM event_points
@@ -144,27 +146,40 @@ class EventStorage:
             (message_id,),
         )
         self.db.commit()
-        self._update_score(season_id=season_id, user_id=user_id)
+        self._update_score(season_id=season_id, channel_id=channel_id, user_id=user_id)
 
-    def _compute_scores(self, season_id):
+    def _compute_scores(self, *, season_id, channel_id):
         points = self.db.execute(
             """
-            SELECT message_id, user_id, point_value
+            SELECT message_id, user_id, p.channel_id, point_value
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
+            WHERE p.season_id = ?
             """,
+            (season_id,),
         ).fetchall()
 
-        totals = {}
+        season_totals = {}
+        event_totals = {}
         for point in points:
+            # tally all for season total
             user_id = point["user_id"]
-            current_points = totals.get(user_id, 0)
-            totals[user_id] = current_points + point["point_value"]
+            current_season_points = season_totals.get(user_id, 0)
+            season_totals[user_id] = current_season_points + point["point_value"]
 
-        def score_generator():
-            for user_id, score in totals.items():
+            # tally channel total if matching
+            if point["channel_id"] == channel_id:
+                current_event_points = event_totals.get(user_id, 0)
+                event_totals[user_id] = current_event_points + point["point_value"]
+
+        def season_score_generator():
+            for user_id, score in season_totals.items():
                 yield (season_id, user_id, score)
+
+        def event_score_generator():
+            for user_id, score in event_totals.items():
+                yield (channel_id, user_id, score)
 
         # clear the season scores out first
         # (this is transactional; commit is after insertion)
@@ -175,17 +190,32 @@ class EventStorage:
             """,
             (season_id,),
         )
+        self.db.execute(
+            """
+            DELETE FROM event_scores
+            WHERE channel_id = ?
+            """,
+            (channel_id,),
+        )
         self.db.executemany(
             """
             INSERT INTO season_scores (season_id, user_id, score)
             VALUES (?, ?, ?)
             """,
-            score_generator(),
+            season_score_generator(),
+        )
+        self.db.executemany(
+            """
+            INSERT INTO event_scores (channel_id, user_id, score)
+            VALUES (?, ?, ?)
+            """,
+            event_score_generator(),
         )
         self.db.commit()
 
-    def _update_score(self, *, season_id, user_id):
-        score = self._sum_user_season(season_id=season_id, user_id=user_id)
+    def _update_score(self, *, season_id, channel_id, user_id):
+        season_score = self._sum_user_season(season_id=season_id, user_id=user_id)
+        event_score = self._sum_user_event(channel_id=channel_id, user_id=user_id)
 
         self.db.execute(
             """
@@ -193,11 +223,31 @@ class EventStorage:
             VALUES (:season_id, :user_id, :score)
             ON CONFLICT (season_id, user_id) DO UPDATE SET score=:score
             """,
-            dict(season_id=season_id, user_id=user_id, score=score),
+            dict(season_id=season_id, user_id=user_id, score=season_score),
+        )
+        self.db.execute(
+            """
+            INSERT INTO event_scores (channel_id, user_id, score)
+            VALUES (:channel_id, :user_id, :score)
+            ON CONFLICT (channel_id, user_id) DO UPDATE SET score=:score
+            """,
+            dict(channel_id=channel_id, user_id=user_id, score=event_score),
         )
         self.db.commit()
 
-    def get_points_for_user(self, *, season_id, user_id):
+    def _sum_user_season(self, *, season_id, user_id):
+        """Re-calculate a user's season score based on live point data."""
+
+        points = self.get_season_points_for_user(season_id=season_id, user_id=user_id)
+        return sum(p["point_value"] for p in points)
+
+    def _sum_user_event(self, *, channel_id, user_id):
+        """Re-calculate a user's event/channel score based on live point data."""
+
+        points = self.get_event_points_for_user(channel_id=channel_id, user_id=user_id)
+        return sum(p["point_value"] for p in points)
+
+    def get_season_points_for_user(self, *, season_id, user_id):
         """Fetch all of the points for a user this season."""
 
         return self.db.execute(
@@ -211,11 +261,19 @@ class EventStorage:
             (user_id, season_id),
         ).fetchall()
 
-    def _sum_user_season(self, *, season_id, user_id):
-        """Re-calculate a user's season score based on live point data."""
+    def get_event_points_for_user(self, *, channel_id, user_id):
+        """Fetch all of the points for a user this event/channel."""
 
-        points = self.get_points_for_user(season_id=season_id, user_id=user_id)
-        return sum(p["point_value"] for p in points)
+        return self.db.execute(
+            """
+            SELECT message_id, p.channel_id, point_value, sent_at
+            FROM event_points p
+            JOIN event_channels c
+                ON p.channel_id = c.channel_id
+            WHERE user_id = ? AND p.channel_id = ?
+            """,
+            (user_id, channel_id),
+        ).fetchall()
 
     def get_season_scores(self, *, season_id):
         return self.db.execute(
@@ -227,6 +285,18 @@ class EventStorage:
             ORDER BY score DESC
             """,
             (season_id,),
+        ).fetchall()
+
+    def get_event_scores(self, *, channel_id):
+        return self.db.execute(
+            """
+            SELECT user_id, score
+            FROM event_scores
+            INDEXED BY idx_event_high_scores
+            WHERE channel_id = ?
+            ORDER BY score DESC
+            """,
+            (channel_id,),
         ).fetchall()
 
     def export(self):
@@ -295,8 +365,8 @@ SCHEMA = """
     );
 """
 
-class Migrations:
 
+class Migrations:
     def __init__(self, db: sqlite3.Connection):
         self.db = db
         self.current = self.version()
