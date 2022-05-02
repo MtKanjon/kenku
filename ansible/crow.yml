@@ -10,6 +10,9 @@
     - synchronize:
         src: ../cogs
         dest: /opt/crow/
+    - copy:
+        src: ../requirements.txt
+        dest: /opt/crow/
     
     # system account
     - user:
@@ -35,12 +38,7 @@
 
     # bot installation
     - pip:
-        name:
-          - pip
-          - setuptools
-          - wheel
-          - Red-DiscordBot
-          - Pillow
+        requirements: /opt/crow/requirements.txt
         virtualenv: /opt/crow
         virtualenv_command: /usr/bin/python3 -m venv
     

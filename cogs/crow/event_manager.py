@@ -86,6 +86,8 @@ class EventManager:
 
     def add_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]
+        if not self.storage.get_channel(message.channel.id):
+            return False
         self.storage.record_point(
             message_id=message.id,
             user_id=message.author.id,
@@ -98,6 +100,7 @@ class EventManager:
             name=f"{message.author.name}#{message.author.discriminator}",
         )
         self.storage.update_snowflake(id=message.channel.id, name=message.channel.name)
+        return True
 
     def remove_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]

@@ -74,8 +74,9 @@ class Crow(commands.Cog):
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
         message: discord.Message = await partial.fetch()
 
-        self.event_manager.add_point(message)
-        await message.add_reaction(EVENT_EMOJI)
+        added = self.event_manager.add_point(message)
+        if added:
+            await message.add_reaction(EVENT_EMOJI)
 
     @commands.Cog.listener("on_raw_reaction_remove")
     async def remove_event_points(self, payload: discord.RawReactionActionEvent):
@@ -184,7 +185,7 @@ class Crow(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.TextChannel,
-        point_value: int = None,
+        point_value: int = 1,
     ):
         """
         Configure a channel to be tracked in the current season.
