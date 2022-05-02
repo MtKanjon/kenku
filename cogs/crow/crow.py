@@ -35,7 +35,7 @@ class Crow(commands.Cog):
     ):
         """owo"""
 
-        if size < 2 or size > 15:
+        if size < 2 or size > 20:
             await ctx.react_quietly("🚷")
             return
 
@@ -192,11 +192,30 @@ class Crow(commands.Cog):
         If the channel is already tracked, use this command to update the point value.
         Scores will be re-calculated.
 
+        Set to 0 to remove a channel from the season. If you re-add a channel later, or add a channel after 🧩 reactions were already added, use the `rescan` command to update scores.
+
         The default point value is 1.
         """
 
         self.event_manager.configure_channel(channel, point_value)
         await ctx.tick()
+
+    @events.command(name="channels")
+    async def events_channels(self, ctx: commands.Context):
+        """Show all events in the current season."""
+
+        season, channels = self.event_manager.get_season_channels(ctx)
+
+        desc = []
+        for channel in channels:
+            points = channel["point_value"]
+            plural = "point" if points == 1 else "points"
+            desc.append(f"<#{channel['channel_id']}>: {points} {plural} per submission")
+
+        embed = discord.Embed(
+            title=f"{season['name']} channels", description="\n".join(desc)
+        )
+        await ctx.send(embed=embed)
 
     @commands.mod()
     @events.command(name="rescan")

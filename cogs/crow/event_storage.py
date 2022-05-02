@@ -58,7 +58,7 @@ class EventStorage:
         )
         self.db.commit()
 
-    def get_channel(self, channel_id):
+    def get_channel(self, channel_id: int):
         return self.db.execute(
             """
             SELECT * from event_channels
@@ -66,6 +66,15 @@ class EventStorage:
             """,
             (channel_id,),
         ).fetchone()
+    
+    def get_season_channels(self, season_id: int):
+        return self.db.execute(
+            """
+            SELECT * from event_channels
+            WHERE season_id = ?
+            """,
+            (season_id,),
+        ).fetchall()
 
     def configure_channel(
         self, *, channel_id: int, season_id: int, point_value: int = None

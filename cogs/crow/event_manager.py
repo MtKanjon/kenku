@@ -29,28 +29,29 @@ class EventManager:
     async def _rescan_task(
         self, ctx: commands.Context, channel: discord.TextChannel, handler
     ):
-        await asyncio.sleep(1.0)
-        status_message: discord.Message = await ctx.send(
-            f"⏳ Scan task started. Watch this space..."
-        )
+        async with ctx.typing():
+            await asyncio.sleep(1.0)
+            status_message: discord.Message = await ctx.send(
+                f"⏳ Scan task started. Watch this space..."
+            )
 
-        # scan channel history (how far back?)
-        count = 0
-        flip = False
-        async for message in channel.history(limit=1000):
-            await handler(message)
+            # scan channel history (how far back?)
+            count = 0
+            flip = False
+            async for message in channel.history(limit=1000):
+                await handler(message)
 
-            count += 1
-            if count % 100 == 0:
-                await asyncio.sleep(2.0)
-                emoji = "🎶" if flip else "🎵"
-                flip = not flip
-                await status_message.edit(
-                    content=f"{emoji} Scanned {count} messages so far..."
-                )
+                count += 1
+                if count % 100 == 0:
+                    await asyncio.sleep(2.0)
+                    emoji = "🎶" if flip else "🎵"
+                    flip = not flip
+                    await status_message.edit(
+                        content=f"{emoji} Scanned {count} messages so far..."
+                    )
 
-        await status_message.edit(content=f"🏁 Scan complete. Checked {count} messages.")
-        self.active_task = None
+            await status_message.edit(content=f"🏁 Scan complete. Checked {count} messages.")
+            self.active_task = None
 
     def _default_season(self, guild_id):
         # FUTURE: multi-season support; for now just use the first/default
@@ -67,6 +68,10 @@ class EventManager:
     def configure_channel(self, channel: discord.TextChannel, point_value: int = None):
         season_id = self._default_season(channel.guild.id)["id"]
 
+        if point_value == 0:
+            self.storage.remove_channel(season_id=season_id, channel_id=channel.id)
+            return
+
         self.storage.configure_channel(
             season_id=season_id, channel_id=channel.id, point_value=point_value
         )
@@ -74,6 +79,10 @@ class EventManager:
 
     def clear_channel_points(self, channel: discord.TextChannel):
         self.storage.clear_channel_points(channel_id=channel.id)
+    
+    def get_season_channels(self, ctx: commands.Context):
+        season = self._default_season(ctx.guild.id)
+        return season, self.storage.get_season_channels(season["id"])
 
     def add_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]
@@ -114,7 +123,7 @@ class EventManager:
 
         sorted_scores = self.storage.get_season_scores(season_id=season["id"])
         score_map = {s["user_id"]: s["score"] for s in sorted_scores}
-        return (season, score_map)
+        return season, score_map
 
     def debug(self):
         data = self.storage.export()
