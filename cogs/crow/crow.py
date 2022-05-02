@@ -120,7 +120,6 @@ class Crow(commands.Cog):
 
         # check if the person un/reacting is a mod
         if not await self.bot.is_mod(member):
-            print(member, "is not a mod")
             return False
 
         return True
@@ -242,7 +241,6 @@ class Crow(commands.Cog):
 
         async def rescan_handler(message):
             if await self.has_mod_reacts(message):
-                print(message.content)
                 self.event_manager.add_point(message)
 
         await ctx.send(
