@@ -84,22 +84,22 @@ class Crow(commands.Cog):
 
     @commands.command()
     async def mypoints(self, ctx: commands.Context):
-        point_map = self.event_manager.user_info(ctx.message.author)
+        season, point_map = self.event_manager.user_info(ctx.message.author)
 
         desc = []
         for channel, points in point_map.items():
             plural = "point" if points == 1 else "points"
             desc.append(f"<#{channel}>: {points} {plural}")
-            
+
         embed = discord.Embed(
-            title="Your points",
+            title=f"Your points - {season['name']}",
             description="\n".join(desc),
         )
         await ctx.send(embed=embed)
 
     @commands.command()
     async def leaderboard(self, ctx: commands.Context):
-        user_points = self.event_manager.compute_leaderboard()
+        season, user_points = self.event_manager.compute_leaderboard(ctx.guild.id)
 
         desc = []
         place = 1
@@ -109,7 +109,7 @@ class Crow(commands.Cog):
             place += 1
 
         embed = discord.Embed(
-            title="Leaderboard",
+            title=f"Leaderboard - {season['name']}",
             description="\n".join(desc),
         )
         mentions = discord.AllowedMentions(users=False)
@@ -120,7 +120,7 @@ class Crow(commands.Cog):
         self,
         ctx: commands.Context,
         channel: discord.TextChannel,
-        multiplier: int = None,
+        point_value: int = None,
     ):
-        self.event_manager.configure_channel(channel, multiplier)
+        self.event_manager.configure_channel(channel, point_value)
         await ctx.tick()
