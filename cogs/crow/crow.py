@@ -1,5 +1,5 @@
 from io import BytesIO
-import logging
+from math import floor
 from pprint import pformat
 from typing import Union
 
@@ -31,16 +31,24 @@ class Crow(commands.Cog):
 
     @commands.command()
     async def wide(
-        self, ctx: commands.Context, emoji: discord.PartialEmoji, size: int = 3
+        self, ctx: commands.Context, emoji: discord.PartialEmoji, size: float = 3
     ):
         """owo"""
 
-        if size < 2 or size > 20:
+        if size < 0.05 or size > 20:
             await ctx.react_quietly("🚷")
             return
 
+        if size >= 1.0:
+            width = floor(WIDE_HEIGHT * size)
+            height = WIDE_HEIGHT
+        else:
+            # 🐇🥚🤫
+            width = WIDE_HEIGHT
+            height = floor(WIDE_HEIGHT / size)
+
         emoji_data = BytesIO(await emoji.url.read())
-        resized_file = self._resize_image(emoji_data, WIDE_HEIGHT * size, WIDE_HEIGHT)
+        resized_file = self._resize_image(emoji_data, width, height)
         file = discord.File(resized_file, filename=f"{emoji.name}_wide.png")
         await ctx.send(file=file)
 
