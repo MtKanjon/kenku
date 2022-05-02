@@ -13,7 +13,7 @@ python3 -m venv red
 ### Running
 
 ```bash
-./red/bin/redbot <name>
+./red/bin/redbot <name> --dev --debug
 ```
 
 First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/)

@@ -1,5 +1,7 @@
 from io import BytesIO
+import logging
 from pprint import pformat
+from typing import Union
 
 import discord
 from PIL import Image
@@ -16,13 +18,24 @@ EVENT_EMOJI = "🧩"
 class Crow(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
+        self.event_manager = None
+
+    async def cog_before_invoke(self, ctx: commands.Context):
+        self._init_event_manager()
+
+    def _init_event_manager(self):
+        # initialize the event manager lazily, so bugs don't crash startup
+        if self.event_manager:
+            return
         self.event_manager = EventManager(self)
 
     @commands.command()
     async def wide(
         self, ctx: commands.Context, emoji: discord.PartialEmoji, size: int = 3
     ):
-        if size < 2 or size > 10:
+        """owo"""
+
+        if size < 2 or size > 15:
             await ctx.react_quietly("🚷")
             return
 
@@ -39,51 +52,99 @@ class Crow(commands.Cog):
         out.seek(0)
         return out
 
+    @commands.group()
+    async def events(self, ctx: commands.Context):
+        """
+        Event leaderboard and point tracking commands.
+
+        Leaderboards are calculated by adding up points for all members participating in an event. To create an event, use the `confchannel` command to tell the bot to monitor the event's channel. Then, react to messages with the 🧩 emoji. Any message with a 🧩 react will be counted for that event's score for that person, and can be applied by any mod/admin. The bot will react with 🧩 as an acknowledgement.
+
+        By default, each 🧩 react earns the member 1 point, but each message only counts once, no matter how many people react. To change the point value, use `confchannel`. Higher point values may be useful for events that require more participation.
+
+        This bot also tracks seasons of events, however the capability to configure seasons is not yet supported. All events/channels and leaderboards will fall under "Season 1" for now.
+        """
+
     @commands.Cog.listener("on_raw_reaction_add")
     async def add_event_points(self, payload: discord.RawReactionActionEvent):
-        if payload.user_id == self.bot.user.id:
-            return
-        if not self.is_event_react(payload.emoji):
-            return
-        if not await self.can_event_react(payload.member):
+        self._init_event_manager()
+        if not await self.should_handle_react(payload):
             return
 
         channel = self.bot.get_channel(payload.channel_id)
-
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
-        message = await partial.fetch()
-        self.event_manager.add_point(message)
+        message: discord.Message = await partial.fetch()
 
+        self.event_manager.add_point(message)
         await message.add_reaction(EVENT_EMOJI)
 
     @commands.Cog.listener("on_raw_reaction_remove")
     async def remove_event_points(self, payload: discord.RawReactionActionEvent):
-        if payload.user_id == self.bot.user.id:
-            return
-        if not self.is_event_react(payload.emoji):
+        self._init_event_manager()
+        if not await self.should_handle_react(payload):
             return
 
         channel = self.bot.get_channel(payload.channel_id)
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
-        message = await partial.fetch()
+        message: discord.Message = await partial.fetch()
+
+        # if there are still mod reacts, don't remove the point!
+        if await self.has_mod_reacts(message):
+            return
+
         self.event_manager.remove_point(message)
+        await message.remove_reaction(EVENT_EMOJI, self.bot.user)
 
-    def is_event_react(self, emoji: discord.PartialEmoji):
-        return emoji.name == EVENT_EMOJI
+    async def should_handle_react(self, payload: discord.RawReactionActionEvent):
+        # ignore ourselves
+        if payload.user_id == self.bot.user.id:
+            return False
 
-    async def can_event_react(self, member: discord.Member):
-        return await self.bot.is_mod(member)
+        # make sure it's actually an event reaction
+        if not self.is_event_react(payload.emoji):
+            return False
 
-    def has_mod_reacts(self, message):
-        pass  # TODO
+        # member is empty on reaction removals, so look it up
+        member = payload.member
+        if not member:
+            guild = self.bot.get_guild(payload.guild_id)
+            member = guild.get_member(payload.user_id)
 
-    @commands.command()
-    async def eventdebug(self, ctx: commands.Context):
-        msg = chat_formatting.box(pformat(self.event_manager.debug()), "python")
-        await ctx.send(msg)
+        # check if the person un/reacting is a mod
+        if not await self.bot.is_mod(member):
+            print(member, "is not a mod")
+            return False
 
-    @commands.command()
-    async def mypoints(self, ctx: commands.Context):
+        return True
+
+    def is_event_react(self, emoji: Union[str, discord.PartialEmoji]):
+        if emoji == EVENT_EMOJI:
+            return True
+        try:
+            return emoji.name == EVENT_EMOJI
+        except AttributeError:
+            return False
+
+    async def has_mod_reacts(self, message: discord.Message):
+        """Check if a message has any mod event reactions."""
+
+        # find the reaction
+        try:
+            reaction: discord.Reaction = next(
+                filter(lambda r: self.is_event_react(r.emoji), message.reactions)
+            )
+        except StopIteration:
+            return False
+
+        # async loop reacting users to find mods
+        async for user in reaction.users():
+            if await self.bot.is_mod(user):
+                return True
+        return False
+
+    @events.command(name="info")
+    async def events_info(self, ctx: commands.Context):
+        """Show your current score in this season."""
+
         season, point_map = self.event_manager.user_info(ctx.message.author)
 
         desc = []
@@ -97,8 +158,10 @@ class Crow(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-    @commands.command()
-    async def leaderboard(self, ctx: commands.Context):
+    @events.command(name="leaderboard")
+    async def events_leaderboard(self, ctx: commands.Context):
+        """Show the season leaderboard."""
+
         season, user_points = self.event_manager.compute_leaderboard(ctx.guild.id)
 
         desc = []
@@ -115,12 +178,54 @@ class Crow(commands.Cog):
         mentions = discord.AllowedMentions(users=False)
         await ctx.send(embed=embed, allowed_mentions=mentions)
 
-    @commands.command()
-    async def confchannel(
+    @commands.admin()
+    @events.command(name="confchannel")
+    async def events_configure_channel(
         self,
         ctx: commands.Context,
         channel: discord.TextChannel,
         point_value: int = None,
     ):
+        """
+        Configure a channel to be tracked in the current season.
+
+        If the channel is already tracked, use this command to update the point value.
+        Scores will be re-calculated.
+
+        The default point value is 1.
+        """
+
         self.event_manager.configure_channel(channel, point_value)
         await ctx.tick()
+
+    @commands.mod()
+    @events.command(name="rescan")
+    async def events_rescan(
+        self,
+        ctx: commands.Context,
+        channel: discord.TextChannel,
+    ):
+        """
+        Scan a channel for reactions and update scores.
+
+        You usually shouldn't need to do this. But if you deleted messages, or the bot was offline
+        when reacting, you can run this to clear out points for a channel and re-calculate.
+        """
+
+        async def rescan_handler(message):
+            if await self.has_mod_reacts(message):
+                print(message.content)
+                self.event_manager.add_point(message)
+
+        await ctx.send(
+            f"Scanning <#{channel.id}> for event data, this may take a while..."
+        )
+        self.event_manager.clear_channel_points(channel)
+
+        self.event_manager.rescan_channel(ctx, channel, rescan_handler)
+
+    @commands.admin()
+    @events.command(name="debug")
+    async def events_debug(self, ctx: commands.Context):
+        msg = chat_formatting.box(pformat(self.event_manager.debug()), "python")
+        await ctx.send(msg)

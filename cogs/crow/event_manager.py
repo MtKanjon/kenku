@@ -1,4 +1,6 @@
+import asyncio
 import datetime
+import logging
 
 import discord
 from redbot.core.data_manager import cog_data_path
@@ -6,17 +8,50 @@ from redbot.core import commands
 
 from .event_storage import EventStorage
 
+log = logging.getLogger("red.kenku")
+
 
 class EventManager:
-    
     def __init__(self, cog: commands.Cog):
         self.cog = cog
 
-        # TODO: move this to a lazy-loaded callback that runs before command group invocation
         path = cog_data_path(cog_instance=cog)
         self.storage = EventStorage(path)
         self.storage.initialize()
-    
+
+        self.active_task = None
+
+    def rescan_channel(
+        self, ctx: commands.Context, channel: discord.TextChannel, handler
+    ):
+        self.active_task = asyncio.create_task(self._rescan_task(ctx, channel, handler))
+
+    async def _rescan_task(
+        self, ctx: commands.Context, channel: discord.TextChannel, handler
+    ):
+        await asyncio.sleep(1.0)
+        status_message: discord.Message = await ctx.send(
+            f"⏳ Scan task started. Watch this space..."
+        )
+
+        # scan channel history (how far back?)
+        count = 0
+        flip = False
+        async for message in channel.history(limit=1000):
+            await handler(message)
+
+            count += 1
+            if count % 100 == 0:
+                await asyncio.sleep(2.0)
+                emoji = "🎶" if flip else "🎵"
+                flip = not flip
+                await status_message.edit(
+                    content=f"{emoji} Scanned {count} messages so far..."
+                )
+
+        await status_message.edit(content=f"🏁 Scan complete. Checked {count} messages.")
+        self.active_task = None
+
     def _default_season(self, guild_id):
         # FUTURE: multi-season support; for now just use the first/default
         seasons = self.storage.get_seasons(guild_id=guild_id)
@@ -32,8 +67,13 @@ class EventManager:
     def configure_channel(self, channel: discord.TextChannel, point_value: int = None):
         season_id = self._default_season(channel.guild.id)["id"]
 
-        self.storage.configure_channel(season_id=season_id, channel_id=channel.id, point_value=point_value)
+        self.storage.configure_channel(
+            season_id=season_id, channel_id=channel.id, point_value=point_value
+        )
         self.storage.update_snowflake(id=channel.id, name=channel.name)
+
+    def clear_channel_points(self, channel: discord.TextChannel):
+        self.storage.clear_channel_points(channel_id=channel.id)
 
     def add_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]
@@ -52,12 +92,16 @@ class EventManager:
 
     def remove_point(self, message: discord.Message):
         season_id = self._default_season(message.guild.id)["id"]
-        self.storage.remove_point(message_id=message.id, season_id=season_id, user_id=message.author.id)
+        self.storage.remove_point(
+            message_id=message.id, season_id=season_id, user_id=message.author.id
+        )
 
     def user_info(self, user: discord.Member):
         season = self._default_season(user.guild.id)
 
-        points = self.storage.get_points_for_user(season_id=season["id"], user_id=user.id)
+        points = self.storage.get_points_for_user(
+            season_id=season["id"], user_id=user.id
+        )
         point_map = {}
         for point in points:
             channel_id = point["channel_id"]

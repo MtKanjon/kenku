@@ -1,7 +1,9 @@
-from curses import use_default_colors
 import datetime
+import logging
 import os
 import sqlite3
+
+log = logging.getLogger("red.kenku")
 
 
 class EventStorage:
@@ -10,13 +12,9 @@ class EventStorage:
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
 
-        # XXX
-        print(self.path)
-
-        def debug(s):
-            print(s)
-
-        self.db.set_trace_callback(debug)
+        log.debug(self.path)
+        if logging.DEBUG >= log.level:
+            self.db.set_trace_callback(log.debug)
 
     def initialize(self):
         if self._version() == SCHEMA_VERSION:
@@ -83,7 +81,7 @@ class EventStorage:
         self.db.commit()
         self._compute_scores(season_id)
 
-    def remove_channel(self, *, channel_id: int):
+    def remove_channel(self, *, channel_id: int, season_id: int):
         self.db.execute(
             """
             DELETE FROM event_channels
@@ -93,6 +91,16 @@ class EventStorage:
         )
         self.db.commit()
         self._compute_scores(season_id)
+
+    def clear_channel_points(self, *, channel_id: int):
+        self.db.execute(
+            """
+            DELETE FROM event_points
+            WHERE channel_id = ?
+            """,
+            (channel_id,),
+        )
+        self.db.commit()
 
     def update_snowflake(self, *, id, name):
         self.db.execute(
@@ -135,7 +143,7 @@ class EventStorage:
         )
         self.db.commit()
         self._update_score(season_id=season_id, user_id=user_id)
-    
+
     def _compute_scores(self, season_id):
         points = self.db.execute(
             """
