@@ -133,11 +133,11 @@ class EventStorage:
     ):
         self.db.execute(
             """
-            INSERT INTO event_points (message_id, user_id, season_id, channel_id, sent_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO event_points (message_id, user_id, channel_id, sent_at)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT (message_id) DO NOTHING
             """,
-            (message_id, user_id, season_id, channel_id, sent_at),
+            (message_id, user_id, channel_id, sent_at),
         )
         self.db.commit()
         self._scoring.recalculate_user_scores(
@@ -214,7 +214,6 @@ SCHEMA = """
 
     CREATE TABLE IF NOT EXISTS event_points (
         message_id  INTEGER PRIMARY KEY NOT NULL,
-        season_id   INTEGER NOT NULL,
         user_id     INTEGER NOT NULL,
         channel_id  INTEGER NOT NULL,
         sent_at     INTEGER NOT NULL
@@ -292,3 +291,4 @@ class Migrations:
 
     def to_3(self):
         self.db.executescript(SCHEMA)
+    

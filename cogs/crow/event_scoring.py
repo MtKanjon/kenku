@@ -41,7 +41,7 @@ class Calculator:
         # and then similarly tally up all adjustments
         adjustments = self.db.execute(
             """
-            SELECT message_id, user_id, a.channel_id, point_value
+            SELECT user_id, a.channel_id, adjustment
             FROM event_adjustments a
             JOIN event_channels c
                 ON a.channel_id = c.channel_id
@@ -153,7 +153,7 @@ class Calculator:
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
-            WHERE user_id = ? AND p.season_id = ?
+            WHERE user_id = ? AND c.season_id = ?
             """,
             (user_id, season_id),
         ).fetchall()
@@ -167,7 +167,7 @@ class Calculator:
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
-            WHERE user_id = ? AND p.channel_id = ?
+            WHERE user_id = ? AND c.channel_id = ?
             """,
             (user_id, channel_id),
         ).fetchall()
