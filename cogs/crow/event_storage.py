@@ -84,7 +84,9 @@ class EventStorage:
             dict(channel_id=channel_id, season_id=season_id, point_value=point_value),
         )
         self.db.commit()
-        self._scoring.compute_scores(season_id=season_id, channel_id=channel_id)
+        self._scoring.recalculate_event_scores(
+            season_id=season_id, channel_id=channel_id
+        )
 
     def remove_channel(self, *, channel_id: int, season_id: int):
         self.db.execute(
@@ -95,7 +97,9 @@ class EventStorage:
             (channel_id,),
         )
         self.db.commit()
-        self._scoring.compute_scores(season_id=season_id, channel_id=channel_id)
+        self._scoring.recalculate_event_scores(
+            season_id=season_id, channel_id=channel_id
+        )
 
     def clear_channel_points(self, *, channel_id: int):
         self.db.execute(
@@ -136,7 +140,7 @@ class EventStorage:
             (message_id, user_id, season_id, channel_id, sent_at),
         )
         self.db.commit()
-        self._scoring.update_score(
+        self._scoring.recalculate_user_scores(
             season_id=season_id, channel_id=channel_id, user_id=user_id
         )
 
@@ -151,7 +155,7 @@ class EventStorage:
             (message_id,),
         )
         self.db.commit()
-        self._scoring.update_score(
+        self._scoring.recalculate_user_scores(
             season_id=season_id, channel_id=channel_id, user_id=user_id
         )
 
@@ -203,8 +207,8 @@ SCHEMA = """
     CREATE INDEX IF NOT EXISTS idx_high_scores ON season_scores (season_id, score DESC);
 
     CREATE TABLE IF NOT EXISTS event_channels (
-        channel_id  INTEGER PRIMARY KEY NOT NULL,
-        season_id   INTEGER NOT NULL,
+        channel_id   INTEGER PRIMARY KEY NOT NULL,
+        season_id    INTEGER NOT NULL,
         point_value  INTEGER DEFAULT 1
     );
 

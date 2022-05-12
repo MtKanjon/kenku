@@ -2,24 +2,31 @@ import sqlite3
 
 
 class Calculator:
-
     def __init__(self, db: sqlite3.Connection):
         self.db = db
 
-    def compute_scores(self, *, season_id: int, channel_id: int):
+    def recalculate_event_scores(self, *, season_id: int, channel_id: int):
+        """
+        Re-compute scores for an entire event, and update that event and season.
+
+        Useful if an event/channel's configuration was modified. If only a user's score
+        needs to be updated, use `recalculate_user_scores`.
+        """
+        season_totals = {}
+        event_totals = {}
+
+        # tally up all points
         points = self.db.execute(
             """
             SELECT message_id, user_id, p.channel_id, point_value
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
-            WHERE p.season_id = ?
+            WHERE c.season_id = ?
             """,
             (season_id,),
         ).fetchall()
 
-        season_totals = {}
-        event_totals = {}
         for point in points:
             # tally all for season total
             user_id = point["user_id"]
@@ -30,8 +37,29 @@ class Calculator:
             if point["channel_id"] == channel_id:
                 current_event_points = event_totals.get(user_id, 0)
                 event_totals[user_id] = current_event_points + point["point_value"]
-        
-        # TODO: add in adjustments for season and channel
+
+        # and then similarly tally up all adjustments
+        adjustments = self.db.execute(
+            """
+            SELECT message_id, user_id, a.channel_id, point_value
+            FROM event_adjustments a
+            JOIN event_channels c
+                ON a.channel_id = c.channel_id
+            WHERE c.season_id = ?
+            """,
+            (season_id,),
+        ).fetchall()
+
+        for adj in adjustments:
+            # tally all for season total
+            user_id = point["user_id"]
+            current_season_points = season_totals.get(user_id, 0)
+            season_totals[user_id] = current_season_points + adj["adjustment"]
+
+            # tally channel total if matching
+            if point["channel_id"] == channel_id:
+                current_event_points = event_totals.get(user_id, 0)
+                event_totals[user_id] = current_event_points + adj["adjustment"]
 
         def season_score_generator():
             for user_id, score in season_totals.items():
@@ -41,7 +69,7 @@ class Calculator:
             for user_id, score in event_totals.items():
                 yield (channel_id, user_id, score)
 
-        # clear the season scores out first
+        # clear the season + event scores out first
         # (this is transactional; commit is after insertion)
         self.db.execute(
             """
@@ -73,7 +101,12 @@ class Calculator:
         )
         self.db.commit()
 
-    def update_score(self, *, season_id: int, channel_id: int, user_id: int):
+    def recalculate_user_scores(self, *, season_id: int, channel_id: int, user_id: int):
+        """
+        Insert or update the event and season score for a user.
+
+        This re-calculates scores for the specified event/channel as well as the season.
+        """
         season_score = self._sum_user_season(season_id=season_id, user_id=user_id)
         event_score = self._sum_user_event(channel_id=channel_id, user_id=user_id)
 
@@ -99,17 +132,17 @@ class Calculator:
         """Re-calculate a user's season score based on live point data."""
 
         points = self.get_season_points_for_user(season_id=season_id, user_id=user_id)
-        # TODO
-        # adj = self.get_season_adjustments_for_user(season_id=season_id, user_id=user_id)
-        return sum(p["point_value"] for p in points)
+        adj = self.get_season_adjustments_for_user(season_id=season_id, user_id=user_id)
+        return sum(p["point_value"] for p in points) + sum(a["adjustment"] for a in adj)
 
     def _sum_user_event(self, *, channel_id: int, user_id: int):
         """Re-calculate a user's event/channel score based on live point data."""
 
         points = self.get_event_points_for_user(channel_id=channel_id, user_id=user_id)
-        # TODO
-        # adj = self.get_event_adjustments_for_user(channel_id=channel_id, user_id=user_id)
-        return sum(p["point_value"] for p in points)
+        adj = self.get_event_adjustments_for_user(
+            channel_id=channel_id, user_id=user_id
+        )
+        return sum(p["point_value"] for p in points) + sum(a["adjustment"] for a in adj)
 
     def get_season_points_for_user(self, *, season_id: int, user_id: int):
         """Fetch all of the points for a user this season."""
@@ -138,9 +171,9 @@ class Calculator:
             """,
             (user_id, channel_id),
         ).fetchall()
-    
+
     def get_season_adjustments_for_user(self, *, season_id: int, user_id: int):
-        """Fetch all of the points for a user this event/channel."""
+        """Fetch all of the adjustments for a user for this season."""
 
         return self.db.execute(
             """
@@ -152,7 +185,19 @@ class Calculator:
             """,
             (user_id, season_id),
         ).fetchall()
-    
+
+    def get_event_adjustments_for_user(self, *, channel_id: int, user_id: int):
+        """Fetch all of the adjustments for a user for this event/channel."""
+
+        return self.db.execute(
+            """
+            SELECT channel_id, adjustment
+            FROM event_adjustments
+            WHERE user_id = ? AND channel_id = ?
+            """,
+            (user_id, channel_id),
+        ).fetchall()
+
     def get_season_scores(self, *, season_id: int):
         return self.db.execute(
             """
@@ -176,4 +221,3 @@ class Calculator:
             """,
             (channel_id,),
         ).fetchall()
-
