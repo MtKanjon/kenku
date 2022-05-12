@@ -32,7 +32,11 @@ class Crow(commands.Cog):
 
     @commands.command()
     async def wide(
-        self, ctx: commands.Context, emoji: discord.PartialEmoji, size: float = 3
+        self,
+        ctx: commands.Context,
+        emoji: discord.PartialEmoji,
+        size: float = 3,
+        channel: discord.TextChannel = None,
     ):
         """owo"""
 
@@ -51,7 +55,11 @@ class Crow(commands.Cog):
         emoji_data = BytesIO(await emoji.url.read())
         resized_file = self._resize_image(emoji_data, width, height)
         file = discord.File(resized_file, filename=f"{emoji.name}_wide.png")
-        await ctx.send(file=file)
+
+        if channel:
+            await channel.send(file=file)
+        else:
+            await ctx.send(file=file)
 
     def _resize_image(self, image_data: BytesIO, width: int, height: int):
         out = BytesIO()
