@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pipenv lock -r > requirements.txt
+cd ansible
+ansible-playbook crow.yml

@@ -4,16 +4,17 @@
 
 ### Setup
 
+Use `pipenv`:
+
 ```bash
-python3 -m venv red
-./red/bin/pip3 install -r requirements.txt
-./red/bin/redbot-setup
+pipenv install
+pipenv run redbot-setup
 ```
 
 ### Running
 
 ```bash
-./red/bin/redbot <name> --dev --debug
+pipenv run redbot <name> --dev --debug
 ```
 
 First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/)
@@ -36,8 +37,7 @@ host.name.here ansible_user=gcp_username_com
 ### Deployment
 
 ```bash
-cd ansible
-ansible-playbook crow.yml
+./deploy.sh
 ```
 
 ### Post-deploy
