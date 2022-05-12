@@ -9,7 +9,7 @@ from redbot.core import commands
 from redbot.core.bot import Red
 from redbot.core.utils import chat_formatting
 
-from .event_manager import EventManager
+from .events import EventManager
 
 WIDE_HEIGHT = 48
 EVENT_EMOJI = "🧩"
@@ -167,10 +167,12 @@ class Crow(commands.Cog):
         await ctx.send(embed=embed)
 
     @events.command(name="leaderboard")
-    async def events_leaderboard(self, ctx: commands.Context, event: discord.TextChannel = None):
+    async def events_leaderboard(
+        self, ctx: commands.Context, event: discord.TextChannel = None
+    ):
         """
         Show the season leaderboard.
-        
+
         If a channel is provided, show that event's leaderboard instead.
         """
 
@@ -178,12 +180,14 @@ class Crow(commands.Cog):
             user_points = self.event_manager.get_event_leaderboard(event.id)
             if user_points is None:
                 # channel not registered for events
-                await ctx.react_quietly('🚷')
+                await ctx.react_quietly("🚷")
                 return
             title = event.name
         else:
-            season, user_points = self.event_manager.get_season_leaderboard(ctx.guild.id)
-            title = season['name']
+            season, user_points = self.event_manager.get_season_leaderboard(
+                ctx.guild.id
+            )
+            title = season["name"]
 
         desc = []
         place = 1

@@ -6,7 +6,7 @@ import discord
 from redbot.core.data_manager import cog_data_path
 from redbot.core import commands
 
-from .event_storage import EventStorage
+from .storage import EventStorage
 
 log = logging.getLogger("red.kenku")
 

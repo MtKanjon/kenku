@@ -107,8 +107,25 @@ class Calculator:
 
         This re-calculates scores for the specified event/channel as well as the season.
         """
-        season_score = self._sum_user_season(season_id=season_id, user_id=user_id)
-        event_score = self._sum_user_event(channel_id=channel_id, user_id=user_id)
+        season_points = self.get_season_points_for_user(
+            season_id=season_id, user_id=user_id
+        )
+        season_adj = self.get_season_adjustments_for_user(
+            season_id=season_id, user_id=user_id
+        )
+        season_score = sum(p["point_value"] for p in season_points) + sum(
+            a["adjustment"] for a in season_adj
+        )
+
+        event_points = self.get_event_points_for_user(
+            channel_id=channel_id, user_id=user_id
+        )
+        event_adj = self.get_event_adjustments_for_user(
+            channel_id=channel_id, user_id=user_id
+        )
+        event_score = sum(p["point_value"] for p in event_points) + sum(
+            a["adjustment"] for a in event_adj
+        )
 
         self.db.execute(
             """
@@ -127,22 +144,6 @@ class Calculator:
             dict(channel_id=channel_id, user_id=user_id, score=event_score),
         )
         self.db.commit()
-
-    def _sum_user_season(self, *, season_id: int, user_id: int):
-        """Re-calculate a user's season score based on live point data."""
-
-        points = self.get_season_points_for_user(season_id=season_id, user_id=user_id)
-        adj = self.get_season_adjustments_for_user(season_id=season_id, user_id=user_id)
-        return sum(p["point_value"] for p in points) + sum(a["adjustment"] for a in adj)
-
-    def _sum_user_event(self, *, channel_id: int, user_id: int):
-        """Re-calculate a user's event/channel score based on live point data."""
-
-        points = self.get_event_points_for_user(channel_id=channel_id, user_id=user_id)
-        adj = self.get_event_adjustments_for_user(
-            channel_id=channel_id, user_id=user_id
-        )
-        return sum(p["point_value"] for p in points) + sum(a["adjustment"] for a in adj)
 
     def get_season_points_for_user(self, *, season_id: int, user_id: int):
         """Fetch all of the points for a user this season."""

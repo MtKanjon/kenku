@@ -3,7 +3,7 @@ import logging
 import os
 import sqlite3
 
-from .event_scoring import Calculator
+from .scoring import Calculator
 
 
 log = logging.getLogger("red.kenku")
@@ -159,7 +159,7 @@ class EventStorage:
             season_id=season_id, channel_id=channel_id, user_id=user_id
         )
 
-    def export(self):
+    def export(self, *, guild_id):
         return self.db.execute(
             """
             SELECT message_id, p.season_id, p.channel_id, point_value, sent_at, sc.name channel, su.name user
@@ -291,4 +291,3 @@ class Migrations:
 
     def to_3(self):
         self.db.executescript(SCHEMA)
-    
