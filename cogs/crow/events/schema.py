@@ -3,7 +3,7 @@ import logging
 
 log = logging.getLogger("red.kenku")
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS seasons (
         id        INTEGER PRIMARY KEY NOT NULL,
@@ -60,6 +60,27 @@ SCHEMA = """
         cached_at  INTEGER NOT NULL
     );
 """
+SCHEMA_3_TO_4 = """
+BEGIN TRANSACTION;
+    CREATE TEMPORARY TABLE event_points_bak (
+        message_id  INTEGER PRIMARY KEY NOT NULL,
+        user_id     INTEGER NOT NULL,
+        channel_id  INTEGER NOT NULL,
+        sent_at     INTEGER NOT NULL
+    );
+    INSERT INTO event_points_bak SELECT message_id, user_id, channel_id, sent_at FROM event_points;
+    DROP TABLE event_points;
+    CREATE TABLE event_points (
+        message_id  INTEGER PRIMARY KEY NOT NULL,
+        user_id     INTEGER NOT NULL,
+        channel_id  INTEGER NOT NULL,
+        sent_at     INTEGER NOT NULL
+    );
+    INSERT INTO event_points SELECT message_id, user_id, channel_id, sent_at FROM event_points_bak;
+    DROP TABLE event_points_bak;
+COMMIT;
+VACUUM;
+"""
 
 
 class Migrations:
@@ -109,3 +130,6 @@ class Migrations:
 
     def to_3(self):
         self.db.executescript(SCHEMA)
+    
+    def to_4(self):
+        self.db.executescript(SCHEMA_3_TO_4)
