@@ -1,6 +1,8 @@
 import asyncio
+import csv
 import datetime
 import logging
+from typing import IO
 
 import discord
 from redbot.core.data_manager import cog_data_path
@@ -139,6 +141,28 @@ class EventManager:
         sorted_scores = self.storage.get_event_scores(channel_id=channel_id)
         score_map = {s["user_id"]: s["score"] for s in sorted_scores}
         return score_map
+
+    def export_points(self, guild_id: int, file=IO):
+        rows = self.storage.export_points(guild_id=guild_id)
+        writer = csv.DictWriter(
+            file,
+            [
+                "message_id",
+                "season_id",
+                "season_name",
+                "channel_id",
+                "channel_name",
+                "user_id",
+                "user_name",
+                "point_value",
+                "sent_at",
+            ],
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        for row in rows:
+            flattened = dict(row)
+            writer.writerow(flattened)
 
     def debug(self):
         data = self.storage.export()

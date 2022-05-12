@@ -159,18 +159,26 @@ class EventStorage:
             season_id=season_id, channel_id=channel_id, user_id=user_id
         )
 
-    def export(self, *, guild_id):
+    def export_points(self, *, guild_id):
         return self.db.execute(
             """
-            SELECT message_id, p.season_id, p.channel_id, point_value, sent_at, sc.name channel, su.name user
+            SELECT message_id,
+                   c.season_id, s.name season_name,
+                   p.channel_id, sc.name channel_name,
+                   p.user_id, su.name user_name,
+                   point_value, sent_at
             FROM event_points p
-            LEFT OUTER JOIN event_channels c
+            LEFT JOIN event_channels c
                 ON p.channel_id = c.channel_id
+            LEFT JOIN seasons s
+                ON c.season_id = s.id
             LEFT OUTER JOIN snowflakes sc
                 ON p.channel_id = sc.id
             LEFT OUTER JOIN snowflakes su
                 ON p.user_id = su.id
-            """
+            WHERE s.guild_id = ?
+            """,
+            (guild_id,)
         ).fetchall()
 
     def get_season_scores(self, *, season_id: int):

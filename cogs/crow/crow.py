@@ -1,4 +1,5 @@
 from io import BytesIO
+import io
 from math import floor
 from pprint import pformat
 from typing import Union
@@ -272,3 +273,12 @@ class Crow(commands.Cog):
     async def events_debug(self, ctx: commands.Context):
         msg = chat_formatting.box(pformat(self.event_manager.debug()), "python")
         await ctx.send(msg)
+
+    @commands.admin()
+    @events.command(name="export")
+    async def events_export(self, ctx: commands.Context):
+        writable = io.StringIO()
+        self.event_manager.export_points(ctx.guild.id, writable)
+        writable.seek(0)
+        file = discord.File(writable, filename=f"{ctx.guild.id}_points.csv")
+        await ctx.send(file=file)
