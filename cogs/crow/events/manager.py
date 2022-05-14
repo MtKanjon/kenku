@@ -5,10 +5,12 @@ import logging
 from typing import IO
 
 import discord
+from discord.ext.commands.converter import UserConverter
 from redbot.core.data_manager import cog_data_path
 from redbot.core import commands
 
 from .storage import EventStorage
+from .types import Adjustment
 
 log = logging.getLogger("red.kenku")
 
@@ -142,7 +144,61 @@ class EventManager:
         score_map = {s["user_id"]: s["score"] for s in sorted_scores}
         return score_map
 
-    def export_points(self, guild_id: int, file=IO):
+    def get_adjustments(self, channel_id: int, file: IO, sample_user: discord.Member):
+        rows = self.storage.get_adjustments(channel_id=channel_id)
+        writer = csv.DictWriter(
+            file,
+            [
+                "user_id",
+                "user_name",
+                "adjustment",
+                "note",
+            ],
+            extrasaction="ignore",
+            quoting=csv.QUOTE_ALL,
+        )
+        writer.writeheader()
+
+        # write a sample row
+        if len(rows) == 0:
+            writer.writerow(
+                dict(
+                    user_id=None,
+                    user_name=f"{sample_user.name}#{sample_user.discriminator}",
+                    adjustment=10,
+                    note=f"Adding 10 points for {sample_user.display_name} because reasons",
+                )
+            )
+        else:
+            for row in rows:
+                flattened = dict(row)
+                writer.writerow(flattened)
+
+        return rows
+
+    async def replace_adjustments(
+        self, ctx: commands.Context, channel_id: int, file: IO
+    ):
+        reader = csv.DictReader(file)
+        user_lookup = UserConverter()
+        adjustments = []
+        for row in reader:
+            user_id = row["user_id"]
+
+            # attempt to look up user by name
+            if not user_id:
+                user: discord.User = await user_lookup.convert(ctx, row["user_name"])
+                user_id = user.id
+                self.storage.update_snowflake(
+                    id=user_id, name=f"{user.name}#{user.discriminator}"
+                )
+            adj = Adjustment(
+                user_id=user_id, adjustment=row["adjustment"], note=row["note"]
+            )
+            adjustments.append(adj)
+        self.storage.replace_adjustments(channel_id=channel_id, adjustments=adjustments)
+
+    def export_points(self, guild_id: int, file: IO):
         rows = self.storage.export_points(guild_id=guild_id)
         writer = csv.DictWriter(
             file,
@@ -158,6 +214,7 @@ class EventManager:
                 "sent_at",
             ],
             extrasaction="ignore",
+            quoting=csv.QUOTE_ALL,
         )
         writer.writeheader()
         for row in rows:

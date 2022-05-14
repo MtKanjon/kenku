@@ -277,14 +277,41 @@ class Crow(commands.Cog):
         self.event_manager.rescan_channel(ctx, channel, rescan_handler)
 
     @commands.admin()
-    @events.command(name="debug")
-    async def events_debug(self, ctx: commands.Context):
-        msg = chat_formatting.box(pformat(self.event_manager.debug()), "python")
-        await ctx.send(msg)
+    @events.command(name="adjust")
+    async def events_adjust(self, ctx: commands.Context, channel: discord.TextChannel):
+        # replace scores
+        if len(ctx.message.attachments) > 0:
+            attachment: discord.Attachment = ctx.message.attachments[0]
+            bytes = await attachment.read()
+            readable = io.StringIO(bytes.decode(encoding="UTF-8"))
+            await self.event_manager.replace_adjustments(ctx, channel.id, readable)
+
+            await ctx.send("Score adjustments updated.")
+            return
+
+        # otherwise, emit scores
+        writable = io.StringIO()
+        adjs = self.event_manager.get_adjustments(
+            channel.id, writable, ctx.message.author
+        )
+        writable.seek(0)
+
+        if len(adjs) == 0:
+            content = "This event does not yet have any adjusted scores. I'm sending you a blank CSV with a sample score adjustment for yourself. "
+        else:
+            content = "Here are the existing score adjustments for this event."
+        content += "\n\nPlease check the `help` for this command for the format and behavior. When you've made your edits, run this command again with your modified CSV attached."
+
+        file = discord.File(writable, filename=f"{ctx.channel.name}_adjustments.csv")
+        await ctx.send(content, file=file)
 
     @commands.admin()
     @events.command(name="export")
     async def events_export(self, ctx: commands.Context):
+        """
+        Export all point data to a CSV file for safe-keeping.
+        """
+
         writable = io.StringIO()
         self.event_manager.export_points(ctx.guild.id, writable)
         writable.seek(0)

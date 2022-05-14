@@ -2,9 +2,11 @@ import datetime
 import logging
 import os
 import sqlite3
+from typing import List
 
 from .schema import Migrations
 from .scoring import Calculator
+from .types import Adjustment
 
 log = logging.getLogger("red.kenku")
 
@@ -178,7 +180,7 @@ class EventStorage:
                 ON p.user_id = su.id
             WHERE s.guild_id = ?
             """,
-            (guild_id,)
+            (guild_id,),
         ).fetchall()
 
     def get_season_scores(self, *, season_id: int):
@@ -191,3 +193,41 @@ class EventStorage:
         return self._scoring.get_season_points_for_user(
             season_id=season_id, user_id=user_id
         )
+
+    def get_adjustments(self, *, channel_id: int):
+        return self.db.execute(
+            """
+            SELECT user_id, s.name user_name, adjustment, note
+            FROM event_adjustments a
+            LEFT OUTER JOIN snowflakes s
+                ON a.user_id = s.id
+            WHERE channel_id = ?
+            """,
+            (channel_id,),
+        ).fetchall()
+
+    def replace_adjustments(self, *, channel_id: int, adjustments: List[Adjustment]):
+        """Drop all adjustments for the given channel and replace them."""
+
+        def adjustment_generator():
+            for adj in adjustments:
+                yield (channel_id, adj.user_id, adj.adjustment, adj.note)
+
+        self.db.execute(
+            """
+            DELETE FROM event_adjustments
+            WHERE channel_id = ?
+            """,
+            (channel_id,),
+        )
+        self.db.executemany(
+            """
+            INSERT INTO event_adjustments (channel_id, user_id, adjustment, note)
+            VALUES (?, ?, ?, ?)
+            """,
+            adjustment_generator(),
+        )
+        self.db.commit()
+
+        # TODO
+        # self._scoring.recalculate_event_scores(season_id=season_id, channel_id=channel_id)
