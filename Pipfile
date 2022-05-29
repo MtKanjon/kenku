@@ -17,6 +17,7 @@ pytest-asyncio = "*"
 python_version = "3.9"
 
 [scripts]
+bot = "redbot dev --dev --debug"
 test = "env PYTHONPATH=. pytest"
 style = "black ."
 check = "pyright"

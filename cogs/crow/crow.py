@@ -2,16 +2,14 @@ import datetime
 from io import BytesIO
 import io
 from math import floor
-from pprint import pformat
-from typing import Optional, Union, cast
+from typing import Union, cast
 
 import discord
 from PIL import Image
 from redbot.core import commands
 from redbot.core.bot import Red
-from redbot.core.utils import chat_formatting
 
-from .events import EventManager
+from .events import EventManager, EventError
 
 WIDE_HEIGHT = 48
 EVENT_EMOJIS = {"🧩": 1, "🍒": 2, "🚥": 3}
@@ -341,7 +339,12 @@ class Crow(commands.Cog):
             attachment: discord.Attachment = ctx.message.attachments[0]
             bytes = await attachment.read()
             readable = io.StringIO(bytes.decode(encoding="UTF-8"))
-            await self.event_manager.replace_adjustments(ctx, channel.id, readable)
+
+            try:
+                await self.event_manager.replace_adjustments(ctx, channel.id, readable)
+            except EventError as e:
+                await ctx.send(str(e))
+                return
 
             await ctx.send("Score adjustments updated.")
             return

@@ -15,6 +15,10 @@ from .types import Adjustment
 log = logging.getLogger("red.kenku")
 
 
+class EventError(Exception):
+    pass
+
+
 class EventManager:
     def __init__(self, cog: commands.Cog, *, storage_path: Optional[str] = None):
         self.cog = cog
@@ -187,19 +191,31 @@ class EventManager:
         reader = csv.DictReader(file)
         user_lookup = UserConverter()
         adjustments = []
+        errors = []
         for row in reader:
             user_id = int(row["user_id"]) if row["user_id"] else None
             adjustment = int(row["adjustment"]) if row["adjustment"] else 0
 
             # attempt to look up user by name
             if not user_id:
-                user: discord.User = await user_lookup.convert(ctx, row["user_name"])
+                try:
+                    user: discord.User = await user_lookup.convert(
+                        ctx, row["user_name"]
+                    )
+                except:
+                    errors.append(row["user_name"])
+                    continue
                 user_id = user.id
-                self.storage.update_snowflake(
-                    id=user_id, name=f"{user.name}#{user.discriminator}"
-                )
+            user = await ctx.bot.get_or_fetch_user(user_id)
+            self.storage.update_snowflake(
+                id=user_id, name=f"{user.name}#{user.discriminator}"
+            )
             adj = Adjustment(user_id=user_id, adjustment=adjustment, note=row["note"])
             adjustments.append(adj)
+
+        if errors:
+            raise EventError("Couldn't figure out these users: " + ", ".join(errors))
+
         self.storage.replace_adjustments(
             season_id=season["id"], channel_id=channel_id, adjustments=adjustments
         )
