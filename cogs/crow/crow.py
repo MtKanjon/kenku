@@ -75,9 +75,9 @@ class Crow(commands.Cog):
         """
         Event leaderboard and point tracking commands.
 
-        Leaderboards are calculated by adding up points for all members participating in an event. To create an event, use the `confchannel` command to tell the bot to monitor the event's channel. Then, react to messages with the 🧩 emoji. Any message with a 🧩 react will be counted for that event's score for that person, and can be applied by any mod/admin. The bot will react with 🧩 as an acknowledgement.
+        Leaderboards are calculated by adding up points for all members participating in an event. To create an event, use the `setup` command to tell the bot to monitor the event's channel. Then, react to messages with the 🧩 emoji. Any message with a 🧩 react will be counted for that event's score for that person, and can be applied by any mod/admin. The bot will react with 🧩 as an acknowledgement.
 
-        By default, each 🧩 react earns the member 1 point, but each message only counts once, no matter how many people react. To change the point value, use `confchannel`. Higher point values may be useful for events that require more participation.
+        By default, each 🧩 react earns the member 1 point, but each message only counts once, no matter how many people react. To change the point value, use `setup`. Higher point values may be useful for events that require more participation.
 
         If you need to count _more than one point_ for a message, you can use these reactions in any combination. They'll be added up:
 
@@ -255,7 +255,7 @@ class Crow(commands.Cog):
         await ctx.send(embed=embed, allowed_mentions=mentions)
 
     @commands.admin()
-    @events.command(name="confchannel")
+    @events.command(name="setup")
     async def events_configure_channel(
         self,
         ctx: commands.Context,
