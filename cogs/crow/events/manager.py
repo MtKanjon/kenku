@@ -2,7 +2,7 @@ import asyncio
 import csv
 import datetime
 import logging
-from typing import IO
+from typing import IO, Optional
 
 import discord
 from discord.ext.commands.converter import UserConverter
@@ -71,7 +71,9 @@ class EventManager:
             seasons = self.storage.get_seasons(guild_id=guild_id)
             return seasons[0]
 
-    def configure_channel(self, channel: discord.TextChannel, point_value: int = None):
+    def configure_channel(
+        self, channel: discord.TextChannel, point_value: Optional[int] = None
+    ):
         season_id = self._default_season(channel.guild.id)["id"]
 
         if point_value == 0:
@@ -121,11 +123,16 @@ class EventManager:
         self.storage.update_snowflake(id=message.channel.id, name=message.channel.name)
         return True
 
-    def user_info(self, user: discord.Member):
+    def user_info(self, user: discord.User):
         season = self._default_season(user.guild.id)
 
         return season, self.storage.get_user_season_scores(
             season_id=season["id"], user_id=user.id
+        )
+
+    def user_event_info(self, user: discord.User, channel: discord.TextChannel):
+        return self.storage.get_event_points_for_user(
+            channel_id=channel.id, user_id=user.id
         )
 
     def get_season_leaderboard(self, guild_id):
@@ -181,7 +188,8 @@ class EventManager:
         user_lookup = UserConverter()
         adjustments = []
         for row in reader:
-            user_id = row["user_id"]
+            user_id = int(row["user_id"]) if row["user_id"] else None
+            adjustment = int(row["adjustment"]) if row["adjustment"] else 0
 
             # attempt to look up user by name
             if not user_id:
@@ -190,9 +198,7 @@ class EventManager:
                 self.storage.update_snowflake(
                     id=user_id, name=f"{user.name}#{user.discriminator}"
                 )
-            adj = Adjustment(
-                user_id=user_id, adjustment=row["adjustment"], note=row["note"]
-            )
+            adj = Adjustment(user_id=user_id, adjustment=adjustment, note=row["note"])
             adjustments.append(adj)
         self.storage.replace_adjustments(channel_id=channel_id, adjustments=adjustments)
 
@@ -218,9 +224,3 @@ class EventManager:
         for row in rows:
             flattened = dict(row)
             writer.writerow(flattened)
-
-    def debug(self):
-        data = self.storage.export()
-        if len(data) == 0:
-            return []
-        return [data[0].keys()] + [tuple(row) for row in data]

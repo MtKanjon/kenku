@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+from typing import Optional
 
 log = logging.getLogger("red.kenku")
 
@@ -118,7 +119,7 @@ class Migrations:
 
         log.info("Migrations complete")
 
-    def version(self, *, assign: int = None):
+    def version(self, *, assign: Optional[int] = None):
         if assign:
             # pragma does not support typical parameter substitution
             self.db.execute(f"PRAGMA user_version = {assign:d}").fetchone()

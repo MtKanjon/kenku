@@ -1,8 +1,9 @@
+import datetime
 from io import BytesIO
 import io
 from math import floor
 from pprint import pformat
-from typing import Union
+from typing import Optional, Union, cast
 
 import discord
 from PIL import Image
@@ -19,7 +20,7 @@ EVENT_EMOJIS = {"🧩": 1, "🍒": 2, "🚥": 3}
 class Crow(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
-        self.event_manager = None
+        self.event_manager = cast(EventManager, None)
 
     async def cog_before_invoke(self, ctx: commands.Context):
         self._init_event_manager()
@@ -84,8 +85,6 @@ class Crow(commands.Cog):
         - 🍒 2 points
         - 🚥 3 points
 
-        For example, reacting with 🍒 gives 2 points. Reacting with 🧩 and 🚥 gives 4 points. Reacting with all three is 6 points. If you need to award more than 6 points for a message, you may want to re-think how you're scoring something. Remember you can change the point amounts for the event overall with `confchannel`.
-
         This bot also tracks seasons of events, however the capability to configure seasons is not yet supported. All events/channels and leaderboards will fall under "Season 1" for now.
         """
 
@@ -148,6 +147,8 @@ class Crow(commands.Cog):
     def is_event_react(self, emoji: Union[str, discord.PartialEmoji]):
         if emoji in EVENT_EMOJIS:
             return True
+        if isinstance(emoji, str):
+            return False
         try:
             return emoji.name in EVENT_EMOJIS
         except AttributeError:
@@ -173,21 +174,48 @@ class Crow(commands.Cog):
         return multiplier, emojis
 
     @events.command(name="info")
-    async def events_info(self, ctx: commands.Context):
-        """Show your current score in this season."""
+    async def events_info(
+        self,
+        ctx: commands.Context,
+        event: discord.TextChannel = None,
+        user: discord.User = None,
+    ):
+        """
+        Show your current score in this season.
 
-        season, scores_by_channel = self.event_manager.user_info(ctx.message.author)
+        If a channel/event name is provided, show a breakdown of your scores for that event.
+        """
 
-        desc = []
-        for score in scores_by_channel:
-            plural = "point" if score["score"] == 1 else "points"
-            desc.append(f"<#{score['channel_id']}>: {score['score']} {plural}")
+        # channel breakdown
+        if event:
+            event_points = self.event_manager.user_event_info(ctx.message.author, event)
+            desc = []
+            for point in event_points:
+                score = point["point_value"] * point["multiplier"]
+                plural = "point" if score == 1 else "points"
+                url = event.get_partial_message(point["message_id"]).jump_url
+                sent_at = int(datetime.datetime.fromisoformat(point['sent_at']).timestamp())
+                desc.append(f"- [{score} {plural}]({url}) on <t:{sent_at}>")
 
-        embed = discord.Embed(
-            title=f"Your points - {season['name']}",
-            description="\n".join(desc),
-        )
-        await ctx.send(embed=embed)
+            embed = discord.Embed(
+                title=f"<@{ctx.message.author.id}> points in <#{event.id}>",
+                description="\n".join(desc),
+            )
+            await ctx.send(embed=embed)
+
+        # general season scores
+        else:
+            season, scores_by_channel = self.event_manager.user_info(ctx.message.author)
+            desc = []
+            for score in scores_by_channel:
+                plural = "point" if score["score"] == 1 else "points"
+                desc.append(f"<#{score['channel_id']}>: {score['score']} {plural}")
+
+            embed = discord.Embed(
+                title=f"Your points - {season['name']}",
+                description="\n".join(desc),
+            )
+            await ctx.send(embed=embed)
 
     @events.command(name="leaderboard")
     async def events_leaderboard(
@@ -280,8 +308,9 @@ class Crow(commands.Cog):
         """
 
         async def rescan_handler(message):
-            if await self.has_mod_reacts(message):
-                self.event_manager.add_point(message)
+            multiplier, _emojis = await self.score_mod_reacts(message)
+            if multiplier > 0:
+                self.event_manager.set_points(message, multiplier)
 
         await ctx.send(
             f"Scanning <#{channel.id}> for event data, this may take a while..."
@@ -293,6 +322,17 @@ class Crow(commands.Cog):
     @commands.admin()
     @events.command(name="adjust")
     async def events_adjust(self, ctx: commands.Context, channel: discord.TextChannel):
+        """
+        Manually adjust scores for an event.
+
+        Provide a channel name and the bot will attach a CSV of manually adjusted scores for you to edit. If no adjustments have been made, it will send a sample. Edit this CSV, run the command again with it attached, and they will be saved.
+
+        You do not need to know Discord user IDs when filling out the spreadsheet. Just fill out `user_name` with a Discord user tag and it'll try to figure it out. Then enter in a score adjustment (positive or negative), and an optional note for your own records.
+
+        If you delete a row from the sheet, that adjustment will be removed.
+
+        Adjusted scores are **not** affected by channel-set multipliers. They'll be added in as-is.
+        """
         # replace scores
         if len(ctx.message.attachments) > 0:
             attachment: discord.Attachment = ctx.message.attachments[0]

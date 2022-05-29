@@ -1,8 +1,9 @@
 import datetime
 import logging
 import os
+from pathlib import Path
 import sqlite3
-from typing import List
+from typing import List, Optional, Union
 
 from .schema import Migrations
 from .scoring import Calculator
@@ -12,7 +13,7 @@ log = logging.getLogger("red.kenku")
 
 
 class EventStorage:
-    def __init__(self, path: str):
+    def __init__(self, path: Union[str, Path]):
         self.path = os.path.join(path, "event_storage.sqlite")
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
@@ -42,7 +43,7 @@ class EventStorage:
         name: str,
         guild_id: int,
         start_at: datetime.datetime,
-        end_at: datetime.datetime = None,
+        end_at: Optional[datetime.datetime] = None,
     ):
         """Creates or updates a season with the given name."""
 
@@ -75,7 +76,7 @@ class EventStorage:
         ).fetchall()
 
     def configure_channel(
-        self, *, channel_id: int, season_id: int, point_value: int = None
+        self, *, channel_id: int, season_id: int, point_value: Optional[int] = None
     ):
         self.db.execute(
             """
@@ -140,7 +141,13 @@ class EventStorage:
             VALUES (:message_id, :user_id, :channel_id, :multiplier, :sent_at)
             ON CONFLICT (message_id) DO UPDATE SET multiplier=:multiplier
             """,
-            dict(message_id=message_id, user_id=user_id, channel_id=channel_id, multiplier=multiplier, sent_at=sent_at),
+            dict(
+                message_id=message_id,
+                user_id=user_id,
+                channel_id=channel_id,
+                multiplier=multiplier,
+                sent_at=sent_at,
+            ),
         )
         self.db.commit()
         self._scoring.recalculate_user_scores(
@@ -193,6 +200,11 @@ class EventStorage:
     def get_user_season_scores(self, *, season_id: int, user_id: int):
         return self._scoring.get_user_season_scores(
             season_id=season_id, user_id=user_id
+        )
+
+    def get_event_points_for_user(self, *, channel_id: int, user_id: int):
+        return self._scoring.get_event_points_for_user(
+            channel_id=channel_id, user_id=user_id
         )
 
     def get_adjustments(self, *, channel_id: int):

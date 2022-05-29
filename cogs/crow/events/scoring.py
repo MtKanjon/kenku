@@ -56,12 +56,12 @@ class Calculator:
 
         for adj in adjustments:
             # tally all for season total
-            user_id = point["user_id"]
+            user_id = adj["user_id"]
             current_season_points = season_totals.get(user_id, 0)
             season_totals[user_id] = current_season_points + adj["adjustment"]
 
             # tally channel total if matching
-            if point["channel_id"] == channel_id:
+            if adj["channel_id"] == channel_id:
                 current_event_points = event_totals.get(user_id, 0)
                 event_totals[user_id] = current_event_points + adj["adjustment"]
 
