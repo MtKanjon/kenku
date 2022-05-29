@@ -1,3 +1,6 @@
+from io import StringIO
+from multiprocessing import dummy
+from textwrap import dedent
 from typing import cast
 import pytest
 
@@ -28,10 +31,9 @@ def test_can_configure_channel(
     assert 0 == len(channels)
 
 
-def test_can_record_point(
-    event_manager: EventManager, make_channel, dummy_message, dummy_context
-):
+def test_can_record_point(event_manager: EventManager, make_channel, make_message):
     dummy_channel = make_channel()
+    dummy_message = make_message()
     event_manager.configure_channel(dummy_channel)
 
     # add a point
@@ -49,9 +51,7 @@ def test_can_record_point(
     assert 0 == scores[0]["score"]
 
 
-def test_season_scoring(
-    event_manager: EventManager, make_channel, dummy_message, dummy_context
-):
+def test_season_scoring(event_manager: EventManager, make_channel):
     dummy_channel = make_channel()
     event_manager.configure_channel(dummy_channel)
 
@@ -59,3 +59,48 @@ def test_season_scoring(
     # check scoring multiple channels
     # check point multipliers
     # check that removing a channel removes scores
+
+
+async def test_adjustments(
+    event_manager: EventManager, make_channel, dummy_context, make_message, make_user
+):
+    dummy_channel = make_channel()
+    event_manager.configure_channel(dummy_channel, 2)
+
+    csv = StringIO(
+        dedent(
+            """user_id,user_name,adjustment,note
+            111,kanjon,50,im the best
+            111,kanjon,20,20 more as a treat
+            222,spine,-1,teehee
+            """
+        )
+    )
+    await event_manager.replace_adjustments(dummy_context, dummy_channel.id, csv)
+
+    # adjusted scores are not affected by multiplier
+    scores = event_manager.get_event_leaderboard(dummy_channel.id)
+    expected = {
+        111: 70,
+        222: -1,
+    }
+    assert expected == scores
+
+    # but they do add in with multiplied scores from reactions
+    msg = make_message(7777, make_user(111), dummy_channel)
+    event_manager.set_points(msg, 3)
+    scores = event_manager.get_event_leaderboard(dummy_channel.id)
+    expected = {
+        111: 70 + 2 * 3,
+        222: -1,
+    }
+    assert expected == scores
+
+    # adjustments can be removed
+    csv = StringIO("user_id,user_name,adjustment,note")
+    await event_manager.replace_adjustments(dummy_context, dummy_channel.id, csv)
+    scores = event_manager.get_event_leaderboard(dummy_channel.id)
+    expected = {
+        111: 2 * 3,
+    }
+    assert expected == scores

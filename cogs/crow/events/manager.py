@@ -182,6 +182,8 @@ class EventManager:
     async def replace_adjustments(
         self, ctx: commands.Context, channel_id: int, file: IO
     ):
+        season = self._default_season(ctx.guild.id)
+
         reader = csv.DictReader(file)
         user_lookup = UserConverter()
         adjustments = []
@@ -198,7 +200,9 @@ class EventManager:
                 )
             adj = Adjustment(user_id=user_id, adjustment=adjustment, note=row["note"])
             adjustments.append(adj)
-        self.storage.replace_adjustments(channel_id=channel_id, adjustments=adjustments)
+        self.storage.replace_adjustments(
+            season_id=season["id"], channel_id=channel_id, adjustments=adjustments
+        )
 
     def export_points(self, guild_id: int, file: IO):
         rows = self.storage.export_points(guild_id=guild_id)

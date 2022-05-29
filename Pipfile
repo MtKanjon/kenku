@@ -11,6 +11,7 @@ red-discordbot = "~=3.4"
 black = "*"
 pytest = "*"
 pyright = "*"
+pytest-asyncio = "*"
 
 [requires]
 python_version = "3.9"

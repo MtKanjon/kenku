@@ -221,7 +221,9 @@ class EventStorage:
             (channel_id,),
         ).fetchall()
 
-    def replace_adjustments(self, *, channel_id: int, adjustments: List[Adjustment]):
+    def replace_adjustments(
+        self, *, season_id: int, channel_id: int, adjustments: List[Adjustment]
+    ):
         """Drop all adjustments for the given channel and replace them."""
 
         def adjustment_generator():
@@ -244,5 +246,6 @@ class EventStorage:
         )
         self.db.commit()
 
-        # TODO
-        # self._scoring.recalculate_event_scores(season_id=season_id, channel_id=channel_id)
+        self._scoring.recalculate_event_scores(
+            season_id=season_id, channel_id=channel_id
+        )
