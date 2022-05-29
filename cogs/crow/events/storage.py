@@ -14,10 +14,9 @@ log = logging.getLogger("red.kenku")
 
 class EventStorage:
     def __init__(self, path: Union[str, Path]):
-        if os.environ.get("CI"):
-            self.path = ":memory:"
-        else:
-            self.path = os.path.join(path, "event_storage.sqlite")
+        self.path = (
+            path if path == ":memory:" else os.path.join(path, "event_storage.sqlite")
+        )
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
 
@@ -79,7 +78,7 @@ class EventStorage:
         ).fetchall()
 
     def configure_channel(
-        self, *, channel_id: int, season_id: int, point_value: Optional[int] = None
+        self, *, channel_id: int, season_id: int, point_value: int = 1
     ):
         self.db.execute(
             """

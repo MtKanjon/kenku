@@ -16,10 +16,10 @@ log = logging.getLogger("red.kenku")
 
 
 class EventManager:
-    def __init__(self, cog: commands.Cog):
+    def __init__(self, cog: commands.Cog, *, storage_path: Optional[str] = None):
         self.cog = cog
 
-        path = cog_data_path(cog_instance=cog)
+        path = storage_path if storage_path else cog_data_path(cog_instance=cog)
         self.storage = EventStorage(path)
         self.storage.initialize()
 
@@ -71,9 +71,7 @@ class EventManager:
             seasons = self.storage.get_seasons(guild_id=guild_id)
             return seasons[0]
 
-    def configure_channel(
-        self, channel: discord.TextChannel, point_value: Optional[int] = None
-    ):
+    def configure_channel(self, channel: discord.TextChannel, point_value: int = 1):
         season_id = self._default_season(channel.guild.id)["id"]
 
         if point_value == 0:

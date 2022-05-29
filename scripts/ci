@@ -3,4 +3,4 @@ set -euxo pipefail
 
 black --check .
 pyright
-pytest
+env PYTHONPATH=. pytest

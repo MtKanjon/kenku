@@ -16,7 +16,7 @@ pyright = "*"
 python_version = "3.9"
 
 [scripts]
-test = "pytest"
+test = "env PYTHONPATH=. pytest"
 style = "black ."
 check = "pyright"
 ci = "./scripts/ci"
