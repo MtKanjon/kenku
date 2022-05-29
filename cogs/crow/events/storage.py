@@ -14,7 +14,10 @@ log = logging.getLogger("red.kenku")
 
 class EventStorage:
     def __init__(self, path: Union[str, Path]):
-        self.path = os.path.join(path, "event_storage.sqlite")
+        if os.environ.get("CI"):
+            self.path = ":memory:"
+        else:
+            self.path = os.path.join(path, "event_storage.sqlite")
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
 

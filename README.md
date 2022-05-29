@@ -7,7 +7,7 @@
 Use `pipenv`:
 
 ```bash
-pipenv install
+pipenv install --dev
 pipenv run redbot-setup
 ```
 
@@ -37,7 +37,7 @@ host.name.here ansible_user=gcp_username_com
 ### Deployment
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 ### Post-deploy

@@ -195,7 +195,9 @@ class Crow(commands.Cog):
                 score = point["point_value"] * point["multiplier"]
                 plural = "point" if score == 1 else "points"
                 url = event.get_partial_message(point["message_id"]).jump_url
-                sent_at = int(datetime.datetime.fromisoformat(point['sent_at']).timestamp())
+                sent_at = int(
+                    datetime.datetime.fromisoformat(point["sent_at"]).timestamp()
+                )
                 desc.append(f"- [{score} {plural}]({url}) on <t:{sent_at}>")
 
             embed = discord.Embed(

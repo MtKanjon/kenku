@@ -13,4 +13,10 @@ pytest = "*"
 pyright = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"
+
+[scripts]
+test = "pytest"
+style = "black ."
+check = "pyright"
+ci = "./scripts/ci"

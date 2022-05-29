@@ -1,0 +1,25 @@
+name: Python checks and tests
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install pipenv
+        run: pipx install pipenv
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pipenv'
+      - name: Install dependencies
+        run: pipenv install --dev
+      - name: Run ci pipenv script
+        run: pipenv run ci
