@@ -10,6 +10,7 @@ red-discordbot = "~=3.4"
 [dev-packages]
 black = "*"
 pytest = "*"
+pyright = "*"
 
 [requires]
 python_version = "3.8"
