@@ -188,7 +188,8 @@ class Crow(commands.Cog):
 
         # channel breakdown
         if event:
-            event_points = self.event_manager.user_event_info(ctx.message.author, event)
+            user = user if user else ctx.message.author
+            event_points = self.event_manager.user_event_info(user, event)
             desc = []
             for point in event_points:
                 score = point["point_value"] * point["multiplier"]
@@ -198,7 +199,7 @@ class Crow(commands.Cog):
                 desc.append(f"- [{score} {plural}]({url}) on <t:{sent_at}>")
 
             embed = discord.Embed(
-                title=f"<@{ctx.message.author.id}> points in <#{event.id}>",
+                title=f"{user.name}#{user.discriminator}'s points in {event.name}",
                 description="\n".join(desc),
             )
             await ctx.send(embed=embed)
