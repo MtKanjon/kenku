@@ -18,7 +18,7 @@ class Calculator:
         # tally up all points
         points = self.db.execute(
             """
-            SELECT message_id, user_id, p.channel_id, point_value
+            SELECT message_id, user_id, p.channel_id, point_value, multiplier
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
@@ -31,12 +31,16 @@ class Calculator:
             # tally all for season total
             user_id = point["user_id"]
             current_season_points = season_totals.get(user_id, 0)
-            season_totals[user_id] = current_season_points + point["point_value"]
+            season_totals[user_id] = (
+                current_season_points + point["point_value"] * point["multiplier"]
+            )
 
             # tally channel total if matching
             if point["channel_id"] == channel_id:
                 current_event_points = event_totals.get(user_id, 0)
-                event_totals[user_id] = current_event_points + point["point_value"]
+                event_totals[user_id] = (
+                    current_event_points + point["point_value"] * point["multiplier"]
+                )
 
         # and then similarly tally up all adjustments
         adjustments = self.db.execute(
@@ -113,9 +117,9 @@ class Calculator:
         season_adj = self.get_season_adjustments_for_user(
             season_id=season_id, user_id=user_id
         )
-        season_score = sum(p["point_value"] for p in season_points) + sum(
-            a["adjustment"] for a in season_adj
-        )
+        season_score = sum(
+            p["point_value"] * p["multiplier"] for p in season_points
+        ) + sum(a["adjustment"] for a in season_adj)
 
         event_points = self.get_event_points_for_user(
             channel_id=channel_id, user_id=user_id
@@ -123,9 +127,9 @@ class Calculator:
         event_adj = self.get_event_adjustments_for_user(
             channel_id=channel_id, user_id=user_id
         )
-        event_score = sum(p["point_value"] for p in event_points) + sum(
-            a["adjustment"] for a in event_adj
-        )
+        event_score = sum(
+            p["point_value"] * p["multiplier"] for p in event_points
+        ) + sum(a["adjustment"] for a in event_adj)
 
         self.db.execute(
             """
@@ -150,7 +154,7 @@ class Calculator:
 
         return self.db.execute(
             """
-            SELECT message_id, p.channel_id, point_value, sent_at
+            SELECT message_id, p.channel_id, point_value, multiplier, sent_at
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
@@ -164,7 +168,7 @@ class Calculator:
 
         return self.db.execute(
             """
-            SELECT message_id, p.channel_id, point_value, sent_at
+            SELECT message_id, p.channel_id, point_value, multiplier, sent_at
             FROM event_points p
             JOIN event_channels c
                 ON p.channel_id = c.channel_id
@@ -221,4 +225,17 @@ class Calculator:
             ORDER BY score DESC
             """,
             (channel_id,),
+        ).fetchall()
+
+    def get_user_season_scores(self, *, season_id: int, user_id: int):
+        return self.db.execute(
+            """
+            SELECT s.channel_id, score
+            FROM event_scores s
+            JOIN event_channels c
+                ON s.channel_id = c.channel_id
+            WHERE c.season_id = ? AND s.user_id = ?
+            ORDER BY s.channel_id DESC
+            """,
+            (season_id, user_id),
         ).fetchall()

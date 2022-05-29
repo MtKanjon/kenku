@@ -90,8 +90,20 @@ class EventManager:
         season = self._default_season(ctx.guild.id)
         return season, self.storage.get_season_channels(season["id"])
 
-    def add_point(self, message: discord.Message):
+    def set_points(self, message: discord.Message, score: int):
         season_id = self._default_season(message.guild.id)["id"]
+
+        # always remove points if set to zero
+        if score == 0:
+            self.storage.remove_point(
+                message_id=message.id,
+                season_id=season_id,
+                channel_id=message.channel.id,
+                user_id=message.author.id,
+            )
+            return
+
+        # only record a point if the channel was configured
         if not self.storage.get_channel(message.channel.id):
             return False
         self.storage.record_point(
@@ -100,6 +112,7 @@ class EventManager:
             season_id=season_id,
             channel_id=message.channel.id,
             sent_at=message.created_at,
+            multiplier=score,
         )
         self.storage.update_snowflake(
             id=message.author.id,
@@ -108,27 +121,12 @@ class EventManager:
         self.storage.update_snowflake(id=message.channel.id, name=message.channel.name)
         return True
 
-    def remove_point(self, message: discord.Message):
-        season_id = self._default_season(message.guild.id)["id"]
-        self.storage.remove_point(
-            message_id=message.id,
-            season_id=season_id,
-            channel_id=message.channel.id,
-            user_id=message.author.id,
-        )
-
     def user_info(self, user: discord.Member):
         season = self._default_season(user.guild.id)
 
-        points = self.storage.get_season_points_for_user(
+        return season, self.storage.get_user_season_scores(
             season_id=season["id"], user_id=user.id
         )
-        point_map = {}
-        for point in points:
-            channel_id = point["channel_id"]
-            current_points = point_map.get(channel_id, 0)
-            point_map[channel_id] = current_points + point["point_value"]
-        return season, point_map
 
     def get_season_leaderboard(self, guild_id):
         season = self._default_season(guild_id)

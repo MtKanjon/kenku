@@ -131,15 +131,16 @@ class EventStorage:
         user_id: int,
         season_id: int,
         channel_id: int,
+        multiplier: int,
         sent_at: datetime.datetime,
     ):
         self.db.execute(
             """
-            INSERT INTO event_points (message_id, user_id, channel_id, sent_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (message_id) DO NOTHING
+            INSERT INTO event_points (message_id, user_id, channel_id, multiplier, sent_at)
+            VALUES (:message_id, :user_id, :channel_id, :multiplier, :sent_at)
+            ON CONFLICT (message_id) DO UPDATE SET multiplier=:multiplier
             """,
-            (message_id, user_id, channel_id, sent_at),
+            dict(message_id=message_id, user_id=user_id, channel_id=channel_id, multiplier=multiplier, sent_at=sent_at),
         )
         self.db.commit()
         self._scoring.recalculate_user_scores(
@@ -189,8 +190,8 @@ class EventStorage:
     def get_event_scores(self, *, channel_id: int):
         return self._scoring.get_event_scores(channel_id=channel_id)
 
-    def get_season_points_for_user(self, *, season_id: int, user_id: int):
-        return self._scoring.get_season_points_for_user(
+    def get_user_season_scores(self, *, season_id: int, user_id: int):
+        return self._scoring.get_user_season_scores(
             season_id=season_id, user_id=user_id
         )
 

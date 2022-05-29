@@ -13,7 +13,7 @@ from redbot.core.utils import chat_formatting
 from .events import EventManager
 
 WIDE_HEIGHT = 48
-EVENT_EMOJI = "🧩"
+EVENT_EMOJIS = {"🧩": 1, "🍒": 2, "🚥": 3}
 
 
 class Crow(commands.Cog):
@@ -78,11 +78,19 @@ class Crow(commands.Cog):
 
         By default, each 🧩 react earns the member 1 point, but each message only counts once, no matter how many people react. To change the point value, use `confchannel`. Higher point values may be useful for events that require more participation.
 
+        If you need to count _more than one point_ for a message, you can use these reactions in any combination. They'll be added up:
+
+        - 🧩 1 point
+        - 🍒 2 points
+        - 🚥 3 points
+
+        For example, reacting with 🍒 gives 2 points. Reacting with 🧩 and 🚥 gives 4 points. Reacting with all three is 6 points. If you need to award more than 6 points for a message, you may want to re-think how you're scoring something. Remember you can change the point amounts for the event overall with `confchannel`.
+
         This bot also tracks seasons of events, however the capability to configure seasons is not yet supported. All events/channels and leaderboards will fall under "Season 1" for now.
         """
 
     @commands.Cog.listener("on_raw_reaction_add")
-    async def add_event_points(self, payload: discord.RawReactionActionEvent):
+    async def event_react_added(self, payload: discord.RawReactionActionEvent):
         self._init_event_manager()
         if not await self.should_handle_react(payload):
             return
@@ -91,12 +99,15 @@ class Crow(commands.Cog):
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
         message: discord.Message = await partial.fetch()
 
-        added = self.event_manager.add_point(message)
+        # count the mod reacts and add them up
+        score, _emojis = await self.score_mod_reacts(message)
+        added = self.event_manager.set_points(message, score)
+
         if added:
-            await message.add_reaction(EVENT_EMOJI)
+            await message.add_reaction(payload.emoji)
 
     @commands.Cog.listener("on_raw_reaction_remove")
-    async def remove_event_points(self, payload: discord.RawReactionActionEvent):
+    async def event_react_removed(self, payload: discord.RawReactionActionEvent):
         self._init_event_manager()
         if not await self.should_handle_react(payload):
             return
@@ -105,12 +116,13 @@ class Crow(commands.Cog):
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
         message: discord.Message = await partial.fetch()
 
-        # if there are still mod reacts, don't remove the point!
-        if await self.has_mod_reacts(message):
-            return
+        # count the mod reacts and add them up
+        score, emojis = await self.score_mod_reacts(message)
+        self.event_manager.set_points(message, score)
 
-        self.event_manager.remove_point(message)
-        await message.remove_reaction(EVENT_EMOJI, self.bot.user)
+        # if there no more mod reacts on this emoji, remove it
+        if payload.emoji not in emojis:
+            await message.remove_reaction(payload.emoji, self.bot.user)
 
     async def should_handle_react(self, payload: discord.RawReactionActionEvent):
         # ignore ourselves
@@ -134,40 +146,42 @@ class Crow(commands.Cog):
         return True
 
     def is_event_react(self, emoji: Union[str, discord.PartialEmoji]):
-        if emoji == EVENT_EMOJI:
+        if emoji in EVENT_EMOJIS:
             return True
         try:
-            return emoji.name == EVENT_EMOJI
+            return emoji.name in EVENT_EMOJIS
         except AttributeError:
             return False
 
-    async def has_mod_reacts(self, message: discord.Message):
+    async def score_mod_reacts(self, message: discord.Message):
         """Check if a message has any mod event reactions."""
 
         # find the reaction
-        try:
-            reaction: discord.Reaction = next(
-                filter(lambda r: self.is_event_react(r.emoji), message.reactions)
-            )
-        except StopIteration:
-            return False
+        reactions: discord.Reaction = filter(
+            lambda r: self.is_event_react(r.emoji), message.reactions
+        )
 
-        # async loop reacting users to find mods
-        async for user in reaction.users():
-            if await self.bot.is_mod(user):
-                return True
-        return False
+        multiplier = 0
+        emojis = set()
+        for reaction in reactions:
+            # async loop reacting users to find mods
+            async for user in reaction.users():
+                if await self.bot.is_mod(user):
+                    multiplier += EVENT_EMOJIS[reaction.emoji]
+                    emojis.add(reaction.emoji)
+                    break
+        return multiplier, emojis
 
     @events.command(name="info")
     async def events_info(self, ctx: commands.Context):
         """Show your current score in this season."""
 
-        season, point_map = self.event_manager.user_info(ctx.message.author)
+        season, scores_by_channel = self.event_manager.user_info(ctx.message.author)
 
         desc = []
-        for channel, points in point_map.items():
-            plural = "point" if points == 1 else "points"
-            desc.append(f"<#{channel}>: {points} {plural}")
+        for score in scores_by_channel:
+            plural = "point" if score["score"] == 1 else "points"
+            desc.append(f"<#{score['channel_id']}>: {score['score']} {plural}")
 
         embed = discord.Embed(
             title=f"Your points - {season['name']}",
