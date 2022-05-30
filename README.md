@@ -11,17 +11,25 @@ pipenv install --dev
 pipenv run redbot-setup
 ```
 
+Name your bot instance `dev`, ideally, for the built-in scripts here to work as-is.
+
 ### Running
 
 ```bash
-pipenv run redbot <name> --dev --debug
+pipenv run bot
 ```
 
 First run will have you provide a token. [Grab one here after adding a bot user.](https://discord.com/developers/applications/)
 
-### Formatting
+### Formatting, linting, tests
 
-Use [black](https://pypi.org/project/black/).
+Use [black](https://pypi.org/project/black/). `pipenv run style` to auto-format all files.
+
+`pyright` is used for type checking. `pipenv run check` to run.
+
+Similarly, `pipenv run test` to run `pytest` tests.
+
+To validate that things will work on CI, you can use `pipenv run ci`.
 
 ## Deployment
 

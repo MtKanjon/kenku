@@ -8,6 +8,7 @@ import discord
 from PIL import Image
 from redbot.core import commands
 from redbot.core.bot import Red
+from redbot.core.utils import menus
 
 from .events import EventManager, EventError
 
@@ -19,6 +20,7 @@ class Crow(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.event_manager = cast(EventManager, None)
+        self.bot.allowed_mentions = discord.AllowedMentions.none()
 
     async def cog_before_invoke(self, ctx: commands.Context):
         self._init_event_manager()
@@ -248,12 +250,24 @@ class Crow(commands.Cog):
             desc.append(f"**{place}.** <@{user}>: {points} {plural}")
             place += 1
 
-        embed = discord.Embed(
-            title=f"Leaderboard - {title}",
-            description="\n".join(desc),
+        embed_pages = []
+        for i in range(0, len(desc), 20):
+            page_lines = desc[i : i + 20]
+            embed_pages.append(
+                discord.Embed(
+                    title=f"Leaderboard - {title} - Page {len(embed_pages)+1}",
+                    description="\n".join(page_lines),
+                )
+            )
+
+        await menus.menu(
+            ctx,
+            embed_pages,
+            controls=menus.DEFAULT_CONTROLS,
+            message=None,
+            page=0,
+            timeout=30.0,
         )
-        mentions = discord.AllowedMentions(users=False)
-        await ctx.send(embed=embed, allowed_mentions=mentions)
 
     @commands.admin()
     @events.command(name="setup")
