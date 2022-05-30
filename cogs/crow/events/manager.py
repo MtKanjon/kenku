@@ -133,9 +133,13 @@ class EventManager:
         )
 
     def user_event_info(self, user: discord.User, channel: discord.TextChannel):
-        return self.storage.get_event_points_for_user(
+        points = self.storage.get_event_points_for_user(
             channel_id=channel.id, user_id=user.id
         )
+        adjustments = self.storage.get_event_adjustments_for_user(
+            channel_id=channel.id, user_id=user.id
+        )
+        return points, adjustments
 
     def get_season_leaderboard(self, guild_id):
         season = self._default_season(guild_id)

@@ -66,9 +66,14 @@ def make_message(make_channel, make_user, dummy_guild):
 
 
 @pytest.fixture
-def dummy_context(dummy_guild):
+def dummy_context(dummy_guild, make_user):
+    class Bot:
+        async def get_or_fetch_user(self, user_id):
+            return make_user(id=user_id)
+
     @dataclass
     class Context:
         guild: discord.Guild
+        bot: Bot
 
-    return Context(guild=dummy_guild)
+    return Context(guild=dummy_guild, bot=Bot())

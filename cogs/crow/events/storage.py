@@ -209,6 +209,11 @@ class EventStorage:
             channel_id=channel_id, user_id=user_id
         )
 
+    def get_event_adjustments_for_user(self, *, channel_id: int, user_id: int):
+        return self._scoring.get_event_adjustments_for_user(
+            channel_id=channel_id, user_id=user_id
+        )
+
     def get_adjustments(self, *, channel_id: int):
         return self.db.execute(
             """
