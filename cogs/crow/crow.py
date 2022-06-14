@@ -248,9 +248,10 @@ class Crow(commands.Cog):
 
         desc = []
         place = 1
-        for user, points in user_points.items():
+        for user_id, points in user_points.items():
+            user = await ctx.bot.get_or_fetch_user(user_id)
             plural = "point" if points == 1 else "points"
-            desc.append(f"**{place}.** <@{user}>: {points} {plural}")
+            desc.append(f"**{place}.** {user} <@{user_id}>: **{points}** {plural}")
             place += 1
 
         embed_pages = []
