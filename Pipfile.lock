@@ -533,19 +533,19 @@
         },
         "red-discordbot": {
             "hashes": [
-                "sha256:0af2751baa16a43bc0c7fac0eb4e431f4b6abdf17f52df09c2c6f6a5c75b5811",
-                "sha256:1663bca775b51e6de1494b32d059c1aedaadf82b7b2c11adfe851b8b9a4630be"
+                "sha256:a7aa84e9e7f4f1dcadc5debe4516052848fa2f337526480369c00c5698503d52",
+                "sha256:e302c81bf8e9d9db615626555da262d6ddb6e4b2f98eaf27ee0fba53f4f2f3b6"
             ],
             "index": "pypi",
-            "version": "==3.4.16"
+            "version": "==3.4.17"
         },
         "red-lavalink": {
             "hashes": [
-                "sha256:e10f0d5db3d1e991bc4084829ce1ebb70854e94e05c9b5d0b074f1d21901fef5",
-                "sha256:ed77a83fc92ff43339cfefdda15d38548e4f2b948e9f1bfd1cf159dcc311c480"
+                "sha256:c7719b5a1234cb460e0929774c8b7c7b92fef9eb5196899e495a4829e6e05c04",
+                "sha256:ed5ec0dca6dacd92b1c489e08fcfb4b657f462c19fbe8744afeebacbf4e056c7"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==0.9.0"
+            "version": "==0.9.3"
         },
         "rich": {
             "hashes": [
@@ -760,11 +760,11 @@
         },
         "pyright": {
             "hashes": [
-                "sha256:0048f06bee85a98afd676bcac4325ff6a5d0ec54f9a8800da89aa42d15cd3558",
-                "sha256:dc02ad9d902c3248553fd2063be88dbc28556629a0ccaffea96bf5a2a5aa44e8"
+                "sha256:4a12432a29359195738685091da9e5b39f830940d265c85ce8920fa936e92b31",
+                "sha256:55394e1198b0feef261552a7fcca13c7705cb89fd9c77e8c4cfa79b27f4af549"
             ],
             "index": "pypi",
-            "version": "==1.1.250"
+            "version": "==1.1.254"
         },
         "pytest": {
             "hashes": [
@@ -788,7 +788,7 @@
                 "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc",
                 "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"
             ],
-            "markers": "python_version < '3.11'",
+            "markers": "python_version >= '3.7'",
             "version": "==2.0.1"
         },
         "typing-extensions": {
