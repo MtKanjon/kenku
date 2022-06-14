@@ -120,7 +120,7 @@ class Crow(commands.Cog):
         self.event_manager.set_points(message, score)
 
         # if there no more mod reacts on this emoji, remove it
-        if payload.emoji not in emojis:
+        if payload.emoji.name not in emojis:
             await message.remove_reaction(payload.emoji, self.bot.user)
 
     async def should_handle_react(self, payload: discord.RawReactionActionEvent):
