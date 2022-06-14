@@ -193,16 +193,14 @@ class Crow(commands.Cog):
             desc = []
             for point in event_points:
                 score = point["point_value"] * point["multiplier"]
-                plural = "point" if score == 1 else "points"
                 url = event.get_partial_message(point["message_id"]).jump_url
                 sent_at = int(
                     datetime.datetime.fromisoformat(point["sent_at"]).timestamp()
                 )
-                desc.append(f"* [{score} {plural}]({url}) on <t:{sent_at}>")
+                desc.append(f"[{plural(score)}]({url}) on <t:{sent_at}>")
             for adj in event_adj:
                 amount = adj["adjustment"]
-                plural = "point" if amount == 1 else "points"
-                desc.append(f"* {amount} {plural} adjusted by staff")
+                desc.append(f"{plural(amount)} adjusted by staff")
             embed = discord.Embed(
                 title=f"{user.name}#{user.discriminator}'s points in {event.name}",
                 description="\n".join(desc),
@@ -213,13 +211,14 @@ class Crow(commands.Cog):
         else:
             season, scores_by_channel = self.event_manager.user_info(ctx.message.author)
             desc = []
+            total = 0
             for score in scores_by_channel:
-                plural = "point" if score["score"] == 1 else "points"
-                desc.append(f"<#{score['channel_id']}>: {score['score']} {plural}")
+                total += score["score"]
+                desc.append(f"<#{score['channel_id']}>: {plural(score['score'])}")
 
             embed = discord.Embed(
                 title=f"Your points - {season['name']}",
-                description="\n".join(desc),
+                description=f"__**Total:** {plural(total)}__\n\n" + "\n".join(desc),
             )
             await ctx.send(embed=embed)
 
@@ -250,8 +249,7 @@ class Crow(commands.Cog):
         place = 1
         for user_id, points in user_points.items():
             user = await ctx.bot.get_or_fetch_user(user_id)
-            plural = "point" if points == 1 else "points"
-            desc.append(f"**{place}.** {user} <@{user_id}>: **{points}** {plural}")
+            desc.append(f"**{place}.** {user} <@{user_id}>: **{plural(points)}**")
             place += 1
 
         embed_pages = []
@@ -304,8 +302,7 @@ class Crow(commands.Cog):
         desc = []
         for channel in channels:
             points = channel["point_value"]
-            plural = "point" if points == 1 else "points"
-            desc.append(f"<#{channel['channel_id']}>: {points} {plural} per submission")
+            desc.append(f"<#{channel['channel_id']}>: {plural(points)} per submission")
 
         embed = discord.Embed(
             title=f"{season['name']} channels", description="\n".join(desc)
@@ -395,3 +392,8 @@ class Crow(commands.Cog):
         writable.seek(0)
         file = discord.File(writable, filename=f"{ctx.guild.id}_points.csv")
         await ctx.send(file=file)
+
+
+def plural(points: int):
+    word = "point" if points == 1 else "points"
+    return f"{points} {word}"
