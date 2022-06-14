@@ -45,7 +45,7 @@ host.name.here ansible_user=gcp_username_com
 ### Deployment
 
 ```bash
-./scripts/deploy.sh
+./scripts/deploy
 ```
 
 ### Post-deploy
