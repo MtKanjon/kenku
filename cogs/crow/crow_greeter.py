@@ -104,6 +104,9 @@ class CrowGreeter:
         message = await config.greeter.message()
         channel_id = await config.greeter.channel()
 
+        if channel_id == 0:
+            return
+
         channel: discord.TextChannel = member.guild.get_channel(channel_id)
         formatted = message.replace("$USER", f"<@{member.id}>")
 
