@@ -98,8 +98,18 @@ class CrowGreeter:
     async def greeter_test(self, ctx: commands.Context):
         await self.greeter_member_joined(ctx.author)
 
-    @commands.Cog.listener("on_member_join")
-    async def greeter_member_joined(self, member: discord.Member):
+    @commands.Cog.listener("on_member_update")
+    async def greeter_member_verified(self, before: discord.Member, after: discord.Member):
+        # we don't use on_member_joined because that'll trigger immediately on join, where we want
+        # people to "complete a few more steps before you can start talking" and get verified
+        # first. so wait for pending state to change to False
+        print(before, before.pending, after, after.pending)
+        if before.pending == after.pending:
+            return
+        if after.pending:
+            return
+        member = after
+
         config = self.config.guild(member.guild)
         message = await config.greeter.message()
         channel_id = await config.greeter.channel()
