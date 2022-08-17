@@ -45,8 +45,9 @@ class CrowGreeter:
         )
 
         config = self.config.guild(ctx.guild)
-        await config.greeter.message.set(message.content)
-        await config.greeter.channel.set(channel.id)
+        async with config.greeter() as greeter:
+            greeter["message"] = message.content
+            greeter["channel"] = channel.id
 
         await ctx.reply(
             "Done! To change the message, run this command again, or use other greeter commands to further customize the greeting (like adding images)."
@@ -94,25 +95,29 @@ class CrowGreeter:
             images.remove(url)
         await ctx.react_quietly("✅")
 
-    @greeter.command(name="test")
-    async def greeter_test(self, ctx: commands.Context):
-        await self.greeter_member_joined(ctx.author)
+    @greeter.command(name="greet")
+    async def greeter_greet(self, ctx: commands.Context, member: discord.Member = None):
+        to = member if member else ctx.author
+        await self._send_greeter_message(to)
 
     @commands.Cog.listener("on_member_update")
-    async def greeter_member_verified(self, before: discord.Member, after: discord.Member):
+    async def greeter_member_verified(
+        self, before: discord.Member, after: discord.Member
+    ):
         # we don't use on_member_joined because that'll trigger immediately on join, where we want
         # people to "complete a few more steps before you can start talking" and get verified
         # first. so wait for pending state to change to False
-        print(before, before.pending, after, after.pending)
         if before.pending == after.pending:
             return
         if after.pending:
             return
-        member = after
+        await self._send_greeter_message(after)
 
+    async def _send_greeter_message(self, member: discord.Member):
         config = self.config.guild(member.guild)
-        message = await config.greeter.message()
-        channel_id = await config.greeter.channel()
+        greeter = await config.greeter()
+        message = greeter["message"]
+        channel_id = greeter["channel"]
 
         if channel_id == 0:
             return
@@ -130,8 +135,9 @@ class CrowGreeter:
 
     async def _greeter_next_image(self, guild: discord.Guild):
         config = self.config.guild(guild)
-        images: List[str] = await config.greeter.images()
-        index: int = await config.greeter.next_image()
+        greeter = await config.greeter()
+        images: List[str] = greeter["images"]
+        index: int = greeter["next_image"]
 
         # wrap around at the start, instead of afterwards, so we can still show images recently
         # added at the end (if the pointer was already at the end)
@@ -139,6 +145,7 @@ class CrowGreeter:
             index = 0
         url = images[index]
 
-        await config.greeter.next_image.set(index + 1)
+        async with config.greeter() as greeter:
+            greeter['next_image'] = index + 1
 
         return url
