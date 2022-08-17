@@ -130,7 +130,11 @@ class CrowGreeter:
             description=formatted,
         )
         embed.set_image(url=image_url)
-        await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
+        await channel.send(
+            f"<@{member.id}>",
+            embed=embed,
+            allowed_mentions=discord.AllowedMentions(users=[member]),
+        )
 
     async def _greeter_next_image(self, guild: discord.Guild):
         config = self.config.guild(guild)
