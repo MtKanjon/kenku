@@ -4,8 +4,6 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 from redbot.core.utils.predicates import MessagePredicate
 
-# pyright: reportGeneralTypeIssues=false
-
 
 class CrowGreeter:
     bot: Red
@@ -63,8 +61,8 @@ class CrowGreeter:
         """Add a banner image to the greeter rotation."""
 
         config = self.config.guild(ctx.guild)
-        async with config.greeter.images() as images:
-            images.append(url)
+        async with config.greeter() as greeter:
+            greeter["images"].append(url)
         await ctx.react_quietly("✅")
 
     @commands.admin()
@@ -76,7 +74,8 @@ class CrowGreeter:
         """List all active banner images."""
 
         config = self.config.guild(ctx.guild)
-        images = await config.greeter.images()
+        greeter = await config.greeter()
+        images = greeter["images"]
         image_text = [f"<{i}>" for i in images]
         images = "\n".join(image_text)
         await ctx.reply(images)
@@ -91,8 +90,8 @@ class CrowGreeter:
         """Remove a banner image from the greeter rotation."""
 
         config = self.config.guild(ctx.guild)
-        async with config.greeter.images() as images:
-            images.remove(url)
+        async with config.greeter() as greeter:
+            greeter["images"].remove(url)
         await ctx.react_quietly("✅")
 
     @greeter.command(name="greet")
@@ -146,6 +145,6 @@ class CrowGreeter:
         url = images[index]
 
         async with config.greeter() as greeter:
-            greeter['next_image'] = index + 1
+            greeter["next_image"] = index + 1
 
         return url
