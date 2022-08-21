@@ -42,6 +42,10 @@ class CrowGreeter:
             "message", check=MessagePredicate.same_context(ctx)
         )
 
+        if message.content.strip().casefold() == "cancel":
+            await message.add_reaction("🆗")
+            return
+
         config = self.config.guild(ctx.guild)
         async with config.greeter() as greeter:
             greeter["message"] = message.content
@@ -97,6 +101,8 @@ class CrowGreeter:
     @commands.mod()
     @greeter.command(name="greet")
     async def greeter_greet(self, ctx: commands.Context, member: discord.Member = None):
+        """Manually send a greeting."""
+
         to = member if member else ctx.author
         await self._send_greeter_message(to)
 
