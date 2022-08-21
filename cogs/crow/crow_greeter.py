@@ -9,7 +9,7 @@ class CrowGreeter:
     bot: Red
     config: Config
 
-    @commands.admin()
+    @commands.mod()
     @commands.group()
     async def greeter(self, ctx: commands.Context):
         """
@@ -94,6 +94,7 @@ class CrowGreeter:
             greeter["images"].remove(url)
         await ctx.react_quietly("✅")
 
+    @commands.mod()
     @greeter.command(name="greet")
     async def greeter_greet(self, ctx: commands.Context, member: discord.Member = None):
         to = member if member else ctx.author
