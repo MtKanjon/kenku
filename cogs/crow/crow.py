@@ -1,3 +1,4 @@
+import aiohttp
 import discord
 from redbot.core import commands, Config
 from redbot.core.bot import Red
@@ -15,6 +16,7 @@ class Crow(CrowEvents, CrowGreeter, CrowMtk, CrowWide, commands.Cog):
         self.bot = bot
         self.bot.allowed_mentions = discord.AllowedMentions.none()
         self.config = Config.get_conf(self, identifier=8703465)
+        self.httpsession = aiohttp.ClientSession()
 
     async def cog_before_invoke(self, ctx: commands.Context):
         self._init_event_manager()

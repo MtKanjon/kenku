@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+aiohttp = "~=3.8"
 pillow = "~=9.1"
 red-discordbot = "~=3.4"
 

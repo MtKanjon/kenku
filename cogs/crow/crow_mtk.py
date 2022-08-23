@@ -1,7 +1,6 @@
 from io import BytesIO
-from math import floor
-from urllib.request import urlopen
 
+import aiohttp
 import discord
 from PIL import Image
 from redbot.core import commands, Config
@@ -11,6 +10,7 @@ from redbot.core.bot import Red
 class CrowMtk:
     bot: Red
     config: Config
+    httpsession: aiohttp.ClientSession
 
     @commands.is_owner()
     @commands.group()
@@ -36,7 +36,7 @@ class CrowMtk:
         config = self.config.user(ctx.author)
         exclaim = await config.exclaim()
 
-        base_data = BytesIO(urlopen(exclaim["image"]).read())
+        base_data = BytesIO(await self._mtk_fetch(exclaim["image"]))
         base_img = Image.open(base_data)
 
         emoji_data = BytesIO(await emoji.url.read())
@@ -87,3 +87,7 @@ class CrowMtk:
                     return hook
         except discord.Forbidden:
             return None
+
+    async def _mtk_fetch(self, url):
+        async with self.httpsession.get(url) as response:
+            return await response.read()
