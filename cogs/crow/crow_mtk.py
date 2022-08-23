@@ -12,13 +12,21 @@ class CrowMtk:
     config: Config
     httpsession: aiohttp.ClientSession
 
-    @commands.is_owner()
+    @commands.mod()
     @commands.group()
     async def mtk(self, ctx: commands.Context):
+        """Kanjon's half-assed goodie bag"""
+
         self.config.register_user(exclaim={"image": "", "x": 0, "y": 0})
 
     @mtk.command("exclaimset")
     async def mtk_exclaim_set(self, ctx: commands.Context, image: str, x: int, y: int):
+        """
+        Configure a base image / sticker for your Discord account
+
+        Supply a URL, and X, Y coordinates (from top left) for where
+        the center of an emoji should go.
+        """
         config = self.config.user(ctx.author)
         async with config.exclaim() as exclaim:
             exclaim["image"] = image
@@ -33,6 +41,13 @@ class CrowMtk:
         emoji: discord.PartialEmoji,
         channel: discord.TextChannel,
     ):
+        """
+        Shout out an emoji on a sticker.
+
+        Use `exclaimset` first! Otherwise this won't work.
+
+        If webhooks were set up on a channel, will attempt to impersonate you.
+        """
         config = self.config.user(ctx.author)
         exclaim = await config.exclaim()
 
@@ -71,6 +86,11 @@ class CrowMtk:
         ctx: commands.Context,
         channel: discord.TextChannel,
     ):
+        """
+        Set up webhooks for a channel for impersonation
+
+        Only needs to be set once per channel. If not set up, messages will show as being from the bot.
+        """
         existing = await self._mtk_exclaim_webhook(channel)
         if existing:
             await ctx.reply("Webhook already exists for that channel.")
