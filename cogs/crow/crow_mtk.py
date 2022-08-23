@@ -54,4 +54,36 @@ class CrowMtk:
 
         file = discord.File(out, filename=f"exclaim_{emoji.name}.png")
 
-        await channel.send(file=file)
+        webhook = await self._mtk_exclaim_webhook(channel)
+        if webhook:
+            await webhook.send(
+                file=file,
+                username=ctx.author.nick or ctx.author.name,
+                avatar_url=ctx.author.avatar_url,
+                wait=True,
+            )
+        else:
+            await channel.send(file=file)
+
+    @mtk.command(name="exclaimwebhook")
+    async def mtk_exclaim_webhook(
+        self,
+        ctx: commands.Context,
+        channel: discord.TextChannel,
+    ):
+        existing = await self._mtk_exclaim_webhook(channel)
+        if existing:
+            await ctx.reply("Webhook already exists for that channel.")
+            return
+        await channel.create_webhook(name="Kenku Disguise")
+        await ctx.react_quietly("✅")
+
+    async def _mtk_exclaim_webhook(
+        self, channel: discord.TextChannel
+    ) -> discord.Webhook:
+        try:
+            for hook in await channel.webhooks():
+                if hook.user.id == self.bot.user.id:
+                    return hook
+        except discord.Forbidden:
+            return None
