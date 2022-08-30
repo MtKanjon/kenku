@@ -1,4 +1,5 @@
 from io import BytesIO
+from math import floor
 
 import aiohttp
 import discord
@@ -17,10 +18,12 @@ class CrowMtk:
     async def mtk(self, ctx: commands.Context):
         """Kanjon's half-assed goodie bag"""
 
-        self.config.register_user(exclaim={"image": "", "x": 0, "y": 0})
+        self.config.register_user(exclaim={"image": "", "x": 0, "y": 0, "scale": 1.0})
 
     @mtk.command("exclaimset")
-    async def mtk_exclaim_set(self, ctx: commands.Context, image: str, x: int, y: int):
+    async def mtk_exclaim_set(
+        self, ctx: commands.Context, image: str, x: int, y: int, scale: float
+    ):
         """
         Configure a base image / sticker for your Discord account
 
@@ -32,6 +35,7 @@ class CrowMtk:
             exclaim["image"] = image
             exclaim["x"] = x
             exclaim["y"] = y
+            exclaim["scale"] = scale
         await ctx.react_quietly("✅")
 
     @mtk.command(name="exclaim")
@@ -50,18 +54,22 @@ class CrowMtk:
         """
         config = self.config.user(ctx.author)
         exclaim = await config.exclaim()
+        scale: float = exclaim["scale"]
 
         base_data = BytesIO(await self._mtk_fetch(exclaim["image"]))
         base_img = Image.open(base_data)
 
         emoji_data = BytesIO(await emoji.url.read())
         emoji_img = Image.open(emoji_data)
+        emoji_resized = emoji_img.resize(
+            (floor(emoji_img.width * scale), floor(emoji_img.height * scale))
+        )
 
         box = (
-            exclaim["x"] - emoji_img.width // 2,
-            exclaim["y"] - emoji_img.height // 2,
+            exclaim["x"] - emoji_resized.width // 2,
+            exclaim["y"] - emoji_resized.height // 2,
         )
-        base_img.alpha_composite(emoji_img, box)
+        base_img.alpha_composite(emoji_resized, box)
 
         out = BytesIO()
         base_img.save(out, format="PNG")
