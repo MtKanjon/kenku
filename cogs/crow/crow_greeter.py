@@ -81,8 +81,8 @@ class CrowGreeter:
         greeter = await config.greeter()
         images = greeter["images"]
         image_text = [f"<{i}>" for i in images]
-        images = "\n".join(image_text)
-        await ctx.reply(images)
+        embed = discord.Embed(description="\n".join(image_text))
+        await ctx.reply(embed=embed)
 
     @commands.admin()
     @greeter.command(name="bannerremove")
