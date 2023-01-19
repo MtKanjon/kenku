@@ -1,10 +1,9 @@
-name: Python checks and tests
+name: Repo & Code Checks
 
 on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -12,14 +11,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Install pipenv
         run: pipx install pipenv
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pipenv'
+
       - name: Install dependencies
         run: pipenv install --dev
+        
       - name: Run ci pipenv script
         run: pipenv run ci
