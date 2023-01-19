@@ -48,6 +48,20 @@ host.name.here ansible_user=gcp_username_com
 ./scripts/deploy
 ```
 
+#### Docker
+
+First-run:
+
+```bash
+docker run --name kenku -it -v /opt/kenku:/data kenku
+```
+
+Subsequent:
+
+```bash
+docker start kenku
+```
+
 ### Post-deploy
 
 Follow [Red-DiscordBot's setup](https://docs.discord.red/en/stable/getting_started.html#getting-started), and use `/usr/local/share/Red-DiscordBot` as a data directory.
