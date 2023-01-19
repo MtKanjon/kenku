@@ -50,6 +50,8 @@ jobs:
 
       - name: Deploy to host
         run: >
-          ssh -o "StrictHostKeyChecking=no" ${{ secrets.TAILSCALE_SSH }} --
+          ssh -o "StrictHostKeyChecking=no" ${{ secrets.TAILSCALE_SSH }}
+          '
           docker pull ${{ steps.meta.outputs.tags }} &&
           docker restart kenku
+          '
