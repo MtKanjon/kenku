@@ -53,7 +53,7 @@ host.name.here ansible_user=gcp_username_com
 First-run:
 
 ```bash
-docker run --name kenku -it -v /opt/kenku:/data kenku
+docker run --name kenku -it -v /opt/kenku:/data --restart unless-stopped ghcr.io/mtkanjon/kenku:main
 ```
 
 Subsequent:
