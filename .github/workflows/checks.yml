@@ -3,7 +3,7 @@ name: Repo & Code Checks
 on: [push]
 
 jobs:
-  build:
+  code-checks:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,6 +23,6 @@ jobs:
 
       - name: Install dependencies
         run: pipenv install --dev
-        
+
       - name: Run ci pipenv script
         run: pipenv run ci

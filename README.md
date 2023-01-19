@@ -33,22 +33,7 @@ To validate that things will work on CI, you can use `pipenv run ci`.
 
 ## Deployment
 
-### Inventory
-
-In `ansible/hosts`:
-
-```ini
-[crow]
-host.name.here ansible_user=gcp_username_com
-```
-
-### Deployment
-
-```bash
-./scripts/deploy
-```
-
-#### Docker
+Use Docker!
 
 First-run:
 
@@ -56,14 +41,12 @@ First-run:
 docker run --name kenku -it -v /opt/kenku:/data --restart unless-stopped ghcr.io/mtkanjon/kenku:main
 ```
 
-Subsequent:
+Subsequent runs:
 
 ```bash
 docker start kenku
 ```
 
-### Post-deploy
+### GitHub Actions
 
-Follow [Red-DiscordBot's setup](https://docs.discord.red/en/stable/getting_started.html#getting-started), and use `/usr/local/share/Red-DiscordBot` as a data directory.
-
-The systemd instance will be broken until this is configured.
+In addition to style checks, GitHub actions will also deploy

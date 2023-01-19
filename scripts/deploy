@@ -1,5 +1,0 @@
-#!/bin/bash
-
-pipenv requirements > requirements.txt
-cd ansible
-ansible-playbook crow.yml
