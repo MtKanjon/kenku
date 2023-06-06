@@ -1,4 +1,4 @@
-FROM python:3.9-alpine
+FROM python:3.11-alpine
 
 COPY requirements.txt /opt/requirements.txt
 RUN apk add --no-cache --virtual .build-deps gcc libffi-dev linux-headers make musl-dev \

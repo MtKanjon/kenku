@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 aiohttp = "~=3.7"
 pillow = "~=9.1"
-red-discordbot = "~=3.4"
+red-discordbot = "~=3.5"
 
 [dev-packages]
 black = "*"
