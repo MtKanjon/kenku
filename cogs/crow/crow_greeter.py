@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Optional, cast
 import discord
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 from redbot.core.utils.predicates import MessagePredicate
 
 
-class CrowGreeter:
+class CrowGreeter(commands.Cog):
     bot: Red
     config: Config
 
@@ -25,7 +25,7 @@ class CrowGreeter:
         self.config.register_guild(greeter=defaults)
 
     @commands.admin()
-    @greeter.command(name="config")
+    @greeter.command(name="config")  # type: ignore
     async def greeter_config(
         self,
         ctx: commands.Context,
@@ -46,7 +46,7 @@ class CrowGreeter:
             await message.add_reaction("🆗")
             return
 
-        config = self.config.guild(ctx.guild)
+        config = self.config.guild(cast(discord.Guild, ctx.guild))
         async with config.greeter() as greeter:
             greeter["message"] = message.content
             greeter["channel"] = channel.id
@@ -56,7 +56,7 @@ class CrowGreeter:
         )
 
     @commands.admin()
-    @greeter.command(name="banneradd")
+    @greeter.command(name="banneradd")  # type: ignore
     async def greeter_add_banner(
         self,
         ctx: commands.Context,
@@ -64,20 +64,20 @@ class CrowGreeter:
     ):
         """Add a banner image to the greeter rotation."""
 
-        config = self.config.guild(ctx.guild)
+        config = self.config.guild(cast(discord.Guild, ctx.guild))
         async with config.greeter() as greeter:
             greeter["images"].append(url)
         await ctx.react_quietly("✅")
 
     @commands.admin()
-    @greeter.command(name="bannerlist")
+    @greeter.command(name="bannerlist")  # type: ignore
     async def greeter_list_banner(
         self,
         ctx: commands.Context,
     ):
         """List all active banner images."""
 
-        config = self.config.guild(ctx.guild)
+        config = self.config.guild(cast(discord.Guild, ctx.guild))
         greeter = await config.greeter()
         images = greeter["images"]
         image_text = [f"<{i}>" for i in images]
@@ -85,7 +85,7 @@ class CrowGreeter:
         await ctx.reply(embed=embed)
 
     @commands.admin()
-    @greeter.command(name="bannerremove")
+    @greeter.command(name="bannerremove")  # type: ignore
     async def greeter_remove_banner(
         self,
         ctx: commands.Context,
@@ -93,17 +93,19 @@ class CrowGreeter:
     ):
         """Remove a banner image from the greeter rotation."""
 
-        config = self.config.guild(ctx.guild)
+        config = self.config.guild(cast(discord.Guild, ctx.guild))
         async with config.greeter() as greeter:
             greeter["images"].remove(url)
         await ctx.react_quietly("✅")
 
     @commands.mod()
-    @greeter.command(name="greet")
-    async def greeter_greet(self, ctx: commands.Context, member: discord.Member = None):
+    @greeter.command(name="greet")  # type: ignore
+    async def greeter_greet(
+        self, ctx: commands.Context, member: Optional[discord.Member] = None
+    ):
         """Manually send a greeting."""
 
-        to = member if member else ctx.author
+        to = member if member else cast(discord.Member, ctx.author)
         await self._send_greeter_message(to)
 
     @commands.Cog.listener("on_member_update")
@@ -128,7 +130,7 @@ class CrowGreeter:
         if channel_id == 0:
             return
 
-        channel: discord.TextChannel = member.guild.get_channel(channel_id)
+        channel = cast(discord.TextChannel, member.guild.get_channel(channel_id))
         formatted = message.replace("$USER", f"<@{member.id}>")
 
         image_url = await self._greeter_next_image(member.guild)

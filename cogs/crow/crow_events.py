@@ -1,6 +1,6 @@
 import datetime
 import io
-from typing import Union, cast
+from typing import Iterator, Optional, Union, cast
 
 import discord
 from redbot.core import commands
@@ -12,7 +12,7 @@ from .events import EventManager, EventError
 EVENT_EMOJIS = {"🧩": 1, "🍒": 2, "🚥": 3}
 
 
-class CrowEvents:
+class CrowEvents(commands.Cog):
     bot: Red
 
     def _init_event_manager(self):
@@ -45,7 +45,7 @@ class CrowEvents:
         if not await self.should_handle_react(payload):
             return
 
-        channel = self.bot.get_channel(payload.channel_id)
+        channel = cast(discord.TextChannel, self.bot.get_channel(payload.channel_id))
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
         message: discord.Message = await partial.fetch()
 
@@ -62,7 +62,7 @@ class CrowEvents:
         if not await self.should_handle_react(payload):
             return
 
-        channel = self.bot.get_channel(payload.channel_id)
+        channel = cast(discord.TextChannel, self.bot.get_channel(payload.channel_id))
         partial = discord.PartialMessage(channel=channel, id=payload.message_id)
         message: discord.Message = await partial.fetch()
 
@@ -72,10 +72,13 @@ class CrowEvents:
 
         # if there no more mod reacts on this emoji, remove it
         if payload.emoji.name not in emojis:
-            await message.remove_reaction(payload.emoji, self.bot.user)
+            await message.remove_reaction(
+                payload.emoji, cast(discord.Member, self.bot.user)
+            )
 
     async def should_handle_react(self, payload: discord.RawReactionActionEvent):
         # ignore ourselves
+        assert self.bot.user
         if payload.user_id == self.bot.user.id:
             return False
 
@@ -86,8 +89,10 @@ class CrowEvents:
         # member is empty on reaction removals, so look it up
         member = payload.member
         if not member:
-            guild = self.bot.get_guild(payload.guild_id)
+            guild = self.bot.get_guild(cast(int, payload.guild_id))
+            assert guild
             member = guild.get_member(payload.user_id)
+            assert member
 
         # check if the person un/reacting is a mod
         if not await self.bot.is_mod(member):
@@ -95,7 +100,7 @@ class CrowEvents:
 
         return True
 
-    def is_event_react(self, emoji: Union[str, discord.PartialEmoji]):
+    def is_event_react(self, emoji: Union[str, discord.PartialEmoji, discord.Emoji]):
         if emoji in EVENT_EMOJIS:
             return True
         if isinstance(emoji, str):
@@ -109,18 +114,19 @@ class CrowEvents:
         """Check if a message has any mod event reactions."""
 
         # find the reaction
-        reactions: discord.Reaction = filter(
+        reactions: Iterator[discord.Reaction] = filter(
             lambda r: self.is_event_react(r.emoji), message.reactions
         )
 
         multiplier = 0
-        emojis = set()
+        emojis: set[str] = set()
         for reaction in reactions:
             # async loop reacting users to find mods
             async for user in reaction.users():
-                if await self.bot.is_mod(user):
-                    multiplier += EVENT_EMOJIS[reaction.emoji]
-                    emojis.add(reaction.emoji)
+                if await self.bot.is_mod(cast(discord.Member, user)):
+                    emoji = cast(str, reaction.emoji)
+                    multiplier += EVENT_EMOJIS[emoji]
+                    emojis.add(emoji)
                     break
         return multiplier, emojis
 
@@ -128,8 +134,8 @@ class CrowEvents:
     async def events_info(
         self,
         ctx: commands.Context,
-        event: discord.TextChannel = None,
-        user: discord.User = None,
+        event: Optional[discord.TextChannel] = None,
+        user: Union[discord.User, discord.Member, None] = None,
     ):
         """
         Show your current score in this season.
@@ -160,7 +166,8 @@ class CrowEvents:
 
         # general season scores
         else:
-            season, scores_by_channel = self.event_manager.user_info(ctx.message.author)
+            author = cast(discord.Member, ctx.message.author)
+            season, scores_by_channel = self.event_manager.user_info(author)
             desc = []
             total = 0
             for score in scores_by_channel:
@@ -175,13 +182,15 @@ class CrowEvents:
 
     @events.command(name="leaderboard")
     async def events_leaderboard(
-        self, ctx: commands.Context, event: discord.TextChannel = None
+        self, ctx: commands.Context, event: Optional[discord.TextChannel] = None
     ):
         """
         Show the season leaderboard.
 
         If a channel is provided, show that event's leaderboard instead.
         """
+
+        assert ctx.guild
 
         if event:
             user_points = self.event_manager.get_event_leaderboard(event.id)
@@ -217,7 +226,7 @@ class CrowEvents:
             ctx,
             embed_pages,
             controls=menus.DEFAULT_CONTROLS,
-            message=None,
+            message=None,  # type: ignore
             page=0,
             timeout=30.0,
         )
@@ -316,7 +325,7 @@ class CrowEvents:
             return
 
         # otherwise, emit scores
-        writable = io.StringIO()
+        writable = io.BytesIO()
         adjs = self.event_manager.get_adjustments(
             channel.id, writable, ctx.message.author
         )
@@ -328,7 +337,8 @@ class CrowEvents:
             content = "Here are the existing score adjustments for this event."
         content += "\n\nPlease check the `help` for this command for the format and behavior. When you've made your edits, run this command again with your modified CSV attached."
 
-        file = discord.File(writable, filename=f"{ctx.channel.name}_adjustments.csv")
+        this_channel = cast(discord.TextChannel, ctx.channel)
+        file = discord.File(writable, filename=f"{this_channel.name}_adjustments.csv")
         await ctx.send(content, file=file)
 
     @commands.admin()
@@ -338,7 +348,9 @@ class CrowEvents:
         Export all point data to a CSV file for safe-keeping.
         """
 
-        writable = io.StringIO()
+        assert ctx.guild
+
+        writable = io.BytesIO()
         self.event_manager.export_points(ctx.guild.id, writable)
         writable.seek(0)
         file = discord.File(writable, filename=f"{ctx.guild.id}_points.csv")

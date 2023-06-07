@@ -1,5 +1,6 @@
 from io import BytesIO
 from math import floor
+from typing import Optional
 
 import discord
 from PIL import Image
@@ -8,14 +9,14 @@ from redbot.core import commands
 WIDE_HEIGHT = 48
 
 
-class CrowWide:
+class CrowWide(commands.Cog):
     @commands.command()
     async def wide(
         self,
         ctx: commands.Context,
         emoji: discord.PartialEmoji,
-        size: float = 3,
-        channel: discord.TextChannel = None,
+        size: float = 3.0,
+        channel: Optional[discord.TextChannel] = None,
     ):
         """owo"""
 
@@ -31,7 +32,7 @@ class CrowWide:
             width = WIDE_HEIGHT
             height = floor(WIDE_HEIGHT / size)
 
-        emoji_data = BytesIO(await emoji.url.read())
+        emoji_data = BytesIO(await emoji.read())
         resized_file = self._resize_image(emoji_data, width, height)
         file = discord.File(resized_file, filename=f"{emoji.name}_wide.png")
 

@@ -1,5 +1,6 @@
 from io import BytesIO
 from math import floor
+from typing import Optional, cast
 
 import aiohttp
 import discord
@@ -8,7 +9,7 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 
 
-class CrowMtk:
+class CrowMtk(commands.Cog):
     bot: Red
     config: Config
     httpsession: aiohttp.ClientSession
@@ -20,7 +21,7 @@ class CrowMtk:
 
         self.config.register_user(exclaim={"image": "", "x": 0, "y": 0, "scale": 1.0})
 
-    @mtk.command("exclaimset")
+    @mtk.command("exclaimset")  # type: ignore
     async def mtk_exclaim_set(
         self, ctx: commands.Context, image: str, x: int, y: int, scale: float
     ):
@@ -38,7 +39,7 @@ class CrowMtk:
             exclaim["scale"] = scale
         await ctx.react_quietly("✅")
 
-    @mtk.command(name="exclaim")
+    @mtk.command(name="exclaim")  # type: ignore
     async def mtk_exclaim(
         self,
         ctx: commands.Context,
@@ -59,7 +60,7 @@ class CrowMtk:
         base_data = BytesIO(await self._mtk_fetch(exclaim["image"]))
         base_img = Image.open(base_data)
 
-        emoji_data = BytesIO(await emoji.url.read())
+        emoji_data = BytesIO(await emoji.read())
         emoji_img = Image.open(emoji_data)
         emoji_resized = emoji_img.resize(
             (floor(emoji_img.width * scale), floor(emoji_img.height * scale))
@@ -79,16 +80,18 @@ class CrowMtk:
 
         webhook = await self._mtk_exclaim_webhook(channel)
         if webhook:
+            author = cast(discord.Member, ctx.author)
+            avatar_url = author.avatar.url if author.avatar else None
             await webhook.send(
                 file=file,
-                username=ctx.author.nick or ctx.author.name,
-                avatar_url=ctx.author.avatar_url,
+                username=author.nick or author.name,
+                avatar_url=avatar_url,
                 wait=True,
             )
         else:
             await channel.send(file=file)
 
-    @mtk.command(name="exclaimwebhook")
+    @mtk.command(name="exclaimwebhook")  # type: ignore
     async def mtk_exclaim_webhook(
         self,
         ctx: commands.Context,
@@ -108,9 +111,11 @@ class CrowMtk:
 
     async def _mtk_exclaim_webhook(
         self, channel: discord.TextChannel
-    ) -> discord.Webhook:
+    ) -> Optional[discord.Webhook]:
         try:
             for hook in await channel.webhooks():
+                assert hook.user
+                assert self.bot.user
                 if hook.user.id == self.bot.user.id:
                     return hook
         except discord.Forbidden:

@@ -2,7 +2,7 @@ import asyncio
 import csv
 import datetime
 import logging
-from typing import IO, Optional
+from typing import IO, Optional, Union, cast
 
 import discord
 from discord.ext.commands.converter import UserConverter
@@ -91,10 +91,12 @@ class EventManager:
         self.storage.clear_channel_points(channel_id=channel.id)
 
     def get_season_channels(self, ctx: commands.Context):
+        assert ctx.guild
         season = self._default_season(ctx.guild.id)
         return season, self.storage.get_season_channels(season["id"])
 
     def set_points(self, message: discord.Message, score: int):
+        assert message.guild
         season_id = self._default_season(message.guild.id)["id"]
 
         # always remove points if set to zero
@@ -122,17 +124,21 @@ class EventManager:
             id=message.author.id,
             name=f"{message.author.name}#{message.author.discriminator}",
         )
-        self.storage.update_snowflake(id=message.channel.id, name=message.channel.name)
+        self.storage.update_snowflake(
+            id=message.channel.id, name=cast(discord.TextChannel, message.channel).name
+        )
         return True
 
-    def user_info(self, user: discord.User):
+    def user_info(self, user: discord.Member):
         season = self._default_season(user.guild.id)
 
         return season, self.storage.get_user_season_scores(
             season_id=season["id"], user_id=user.id
         )
 
-    def user_event_info(self, user: discord.User, channel: discord.TextChannel):
+    def user_event_info(
+        self, user: Union[discord.User, discord.Member], channel: discord.TextChannel
+    ):
         points = self.storage.get_event_points_for_user(
             channel_id=channel.id, user_id=user.id
         )
@@ -155,7 +161,12 @@ class EventManager:
         score_map = {s["user_id"]: s["score"] for s in sorted_scores}
         return score_map
 
-    def get_adjustments(self, channel_id: int, file: IO, sample_user: discord.Member):
+    def get_adjustments(
+        self,
+        channel_id: int,
+        file: IO,
+        sample_user: Union[discord.Member, discord.User],
+    ):
         rows = self.storage.get_adjustments(channel_id=channel_id)
         writer = csv.DictWriter(
             file,
@@ -190,6 +201,7 @@ class EventManager:
     async def replace_adjustments(
         self, ctx: commands.Context, channel_id: int, file: IO
     ):
+        assert ctx.guild
         season = self._default_season(ctx.guild.id)
 
         reader = csv.DictReader(file)
