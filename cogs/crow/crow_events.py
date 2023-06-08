@@ -325,7 +325,7 @@ class CrowEvents(commands.Cog):
             return
 
         # otherwise, emit scores
-        writable = io.BytesIO()
+        writable = io.StringIO()
         adjs = self.event_manager.get_adjustments(
             channel.id, writable, ctx.message.author
         )
@@ -338,7 +338,7 @@ class CrowEvents(commands.Cog):
         content += "\n\nPlease check the `help` for this command for the format and behavior. When you've made your edits, run this command again with your modified CSV attached."
 
         this_channel = cast(discord.TextChannel, ctx.channel)
-        file = discord.File(writable, filename=f"{this_channel.name}_adjustments.csv")
+        file = discord.File(writable, filename=f"{this_channel.name}_adjustments.csv")  # type: ignore
         await ctx.send(content, file=file)
 
     @commands.admin()
@@ -350,10 +350,10 @@ class CrowEvents(commands.Cog):
 
         assert ctx.guild
 
-        writable = io.BytesIO()
+        writable = io.StringIO()
         self.event_manager.export_points(ctx.guild.id, writable)
         writable.seek(0)
-        file = discord.File(writable, filename=f"{ctx.guild.id}_points.csv")
+        file = discord.File(writable, filename=f"{ctx.guild.id}_points.csv")  # type: ignore
         await ctx.send(file=file)
 
 
