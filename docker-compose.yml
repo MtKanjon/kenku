@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  bot:
+    image: "ghcr.io/mtkanjon/kenku:main"
+    restart: unless-stopped
+    volumes:
+      - /opt/kenku:/data
