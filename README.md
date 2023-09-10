@@ -49,4 +49,4 @@ docker start kenku
 
 ### GitHub Actions
 
-In addition to style checks, GitHub actions will also deploy
+In addition to style checks, GitHub actions will also deploy this project on push to the main branch.
