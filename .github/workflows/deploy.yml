@@ -54,5 +54,5 @@ jobs:
           '
           curl -O https://raw.githubusercontent.com/MtKanjon/kenku/main/docker-compose.yml &&
           docker compose pull &&
-          docker compose up --force-recreate
+          docker compose up --force-recreate -d
           '

@@ -1,7 +1,9 @@
 version: "3.8"
 services:
   bot:
+    container_name: kenku
     image: "ghcr.io/mtkanjon/kenku:main"
     restart: unless-stopped
+    network_mode: host
     volumes:
       - /opt/kenku:/data
