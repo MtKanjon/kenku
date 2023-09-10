@@ -3,7 +3,7 @@ import io
 from typing import Iterator, Optional, Union, cast
 
 import discord
-from redbot.core import commands
+from redbot.core import commands, app_commands
 from redbot.core.bot import Red
 from redbot.core.utils import menus
 
@@ -21,7 +21,7 @@ class CrowEvents(commands.Cog):
             return
         self.event_manager = EventManager(cast(commands.Cog, self))
 
-    @commands.group()
+    @commands.group(name="events")
     async def events(self, ctx: commands.Context):
         """
         Event leaderboard and point tracking commands.
@@ -131,6 +131,12 @@ class CrowEvents(commands.Cog):
         return multiplier, emojis
 
     @events.command(name="info")
+    @app_commands.command(name="event-info")
+    @app_commands.guild_only()
+    @app_commands.describe(
+        event="the channel of the event",
+        user="the person to look up info for (optional, defaults to you)",
+    )
     async def events_info(
         self,
         ctx: commands.Context,
@@ -180,9 +186,19 @@ class CrowEvents(commands.Cog):
             )
             await ctx.send(embed=embed)
 
-    @events.command(name="leaderboard")
+    public_events = app_commands.Group(
+        name="events", description="kenku event leaderboards"
+    )
+
+    @public_events.command(name="leaderboard", description="")
+    @app_commands.guild_only()
+    @app_commands.describe(
+        event="the channel of the event",
+    )
     async def events_leaderboard(
-        self, ctx: commands.Context, event: Optional[discord.TextChannel] = None
+        self,
+        interaction: discord.Interaction,
+        event: Optional[discord.TextChannel] = None,
     ):
         """
         Show the season leaderboard.
@@ -190,18 +206,18 @@ class CrowEvents(commands.Cog):
         If a channel is provided, show that event's leaderboard instead.
         """
 
-        assert ctx.guild
-
         if event:
             user_points = self.event_manager.get_event_leaderboard(event.id)
             if user_points is None:
                 # channel not registered for events
-                await ctx.react_quietly("🚷")
+                await interaction.response.send_message(
+                    "Channel is not marked as an event!", ephemeral=True
+                )
                 return
             title = event.name
         else:
             season, user_points = self.event_manager.get_season_leaderboard(
-                ctx.guild.id
+                interaction.guild_id
             )
             title = season["name"]
 
@@ -233,6 +249,7 @@ class CrowEvents(commands.Cog):
 
     @commands.admin()
     @events.command(name="setup")
+    @app_commands.default_permissions()
     async def events_configure_channel(
         self,
         ctx: commands.Context,
@@ -271,6 +288,7 @@ class CrowEvents(commands.Cog):
 
     @commands.mod()
     @events.command(name="rescan")
+    @app_commands.default_permissions()
     async def events_rescan(
         self,
         ctx: commands.Context,
