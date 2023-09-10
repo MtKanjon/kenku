@@ -52,7 +52,7 @@ jobs:
         run: >
           ssh -o "StrictHostKeyChecking=no" ${{ secrets.TAILSCALE_SSH }}
           '
-          curl -O https://raw.githubusercontent.com/MtKanjon/kenku/main/docker-compose.yml
-          docker compose pull
+          curl -O https://raw.githubusercontent.com/MtKanjon/kenku/main/docker-compose.yml &&
+          docker compose pull &&
           docker compose up --force-recreate
           '
