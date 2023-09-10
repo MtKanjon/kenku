@@ -11,4 +11,5 @@ COPY cogs /opt/cogs
 
 VOLUME /data
 
-CMD ["redbot", "kenku"]
+RUN redbot kenku --no-prompt --edit --prefix '%' --edit-data-path '/data'
+CMD ["redbot", "kenku", "--no-prompt"]

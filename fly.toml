@@ -1,0 +1,14 @@
+# https://fly.io/docs/reference/configuration/
+
+app = "kenku"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "kenku"
+  destination = "/data"
+
+[[services]] 
+  # (none, this is a discord bot with no port exposed)
