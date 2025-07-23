@@ -18,5 +18,5 @@ class Crow(CrowEvents, CrowGreeter, CrowMtk, CrowWide, commands.Cog):
         self.config = Config.get_conf(self, identifier=8703465)
         self.httpsession = aiohttp.ClientSession()
 
-    async def cog_before_invoke(self, ctx: commands.Context):
+    async def cog_before_invoke(self, ctx: commands.Context):  # type: ignore
         self._init_event_manager()
